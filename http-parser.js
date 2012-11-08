@@ -25,7 +25,7 @@ HTTPParser.prototype.INIT_REQUEST = function () {
   this.lineState = "DATA";
   this.info = {
     headers: {}
-  };  
+  };
 };
 HTTPParser.prototype.consumeLine = function () {
   if (this.captureStart === undefined) {
@@ -72,7 +72,5 @@ HTTPParser.prototype.HEADER = function () {
     this.state = "BODY";
   }
 };
-
-
-
-
+// Stub BODY so my requests don't throw errors
+HTTPParser.prototype.BODY = function(){};
