@@ -73,4 +73,7 @@ HTTPParser.prototype.HEADER = function () {
   }
 };
 // Stub BODY so my requests don't throw errors
-HTTPParser.prototype.BODY = function(){};
+HTTPParser.prototype.BODY = function(){
+  this.body = this.chunk.toString("ascii", this.offset, this.end);
+  this.offset = this.end;
+};
