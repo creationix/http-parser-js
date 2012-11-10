@@ -74,6 +74,12 @@ HTTPParser.prototype.HEADER = function () {
 };
 // Stub BODY so my requests don't throw errors
 HTTPParser.prototype.BODY = function(){
-  this.body = this.chunk.toString("ascii", this.offset, this.end);
+  // this.body = this.chunk.toString("ascii", this.offset, this.end);
+  this.onBody(this.chunk, this.offset, this.end - this.offset);
+  // PROBABLY BAD
+  this.state = "MESSAGE_COMPLETE";
+};
+HTTPParser.prototype.MESSAGE_COMPLETE = function(){
   this.offset = this.end;
+  this.onMessageComplete();
 };
