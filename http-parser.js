@@ -68,6 +68,7 @@ HTTPParser.prototype.HEADER = function () {
     this.info.headers[match[1].toLowerCase()] = match[2];
   }
   else {
+    this.info.upgrade = !!this.info.headers.upgrade;
     this.onHeadersComplete(this.info);
     this.state = "BODY";
   }
