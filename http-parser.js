@@ -85,7 +85,7 @@ HTTPParser.prototype.REQUEST_LINE = function () {
   this.state = "HEADER";
 };
 
-var responseExp = /^HTTP\/([0-9]).([0-9]) (\d+) (\w+)$/;
+var responseExp = /^HTTP\/([0-9]).([0-9]) (\d+) ([^\n\r]+)$/;
 HTTPParser.prototype.RESPONSE_LINE = function () {
   var line = this.consumeLine();
   if (line === undefined) {
