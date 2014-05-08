@@ -20,6 +20,9 @@ function HTTPParser(type) {
   };
   this.lineState = "DATA";
   this.encoding = null;
+  this.connection = null;
+  this.body_bytes = null;
+  this.headResponse = null;
 }
 HTTPParser.REQUEST = "REQUEST";
 HTTPParser.RESPONSE = "RESPONSE";
@@ -28,6 +31,7 @@ HTTPParser.prototype.finish = function () {
 };
 var state_handles_increment = {
   BODY_RAW: true,
+  BODY_SIZED: true,
   BODY_CHUNK: true
 };
 HTTPParser.prototype.execute = function (chunk, offset, length) {
@@ -40,7 +44,7 @@ HTTPParser.prototype.execute = function (chunk, offset, length) {
   this.start = offset;
   this.offset = offset;
   this.end = offset + length;
-  while (this.offset < this.end) {
+  while (this.offset < this.end && this.state !== "UNINITIALIZED") {
     var state = this.state;
     this[state]();
     if (!state_handles_increment[state]) {
@@ -92,10 +96,17 @@ HTTPParser.prototype.RESPONSE_LINE = function () {
     return;
   }
   var match = responseExp.exec(line);
-  this.info.versionMajor = match[1];
-  this.info.versionMinor = match[2];
-  this.info.statusCode = Number(match[3]);
+  var versionMajor = this.info.versionMajor = match[1];
+  var versionMinor = this.info.versionMinor = match[2];
+  var statusCode = this.info.statusCode = Number(match[3]);
   this.info.statusMsg = match[4];
+  // Implied zero length.
+  if ((statusCode / 100 | 0) === 1 || statusCode === 204 || statusCode === 304) {
+    this.body_bytes = 0;
+  }
+  if (versionMajor === '1' && versionMinor === '0') {
+    this.connection = 'close';
+  }
   this.state = "HEADER";
 };
 var headerExp = /^([^:]*): *(.*)$/;
@@ -113,16 +124,27 @@ HTTPParser.prototype.HEADER = function () {
       this.info.headers.push(v);
       if (k === 'transfer-encoding') {
         this.encoding = v;
+      } else if (k === 'content-length') {
+        this.body_bytes = parseInt(v, 10);
+      } else if (k === 'connection') {
+        this.connection = v;
       }
     }
   } else {
     //console.log(this.info.headers);
     this.info.upgrade = !!this.info.headers.upgrade;
     this.onHeadersComplete(this.info);
-    if (this.encoding === 'chunked') {
+    // Set ``this.headResponse = true;`` to ignore Content-Length.
+    if (this.headResponse) {
+      this.onMessageComplete();
+      this.state = 'UNINITIALIZED';
+    } else if (this.encoding === 'chunked') {
       this.state = "BODY_CHUNKHEAD";
-    } else {
+    } else if (this.body_bytes === null) {
+      //if (this.connection !== 'close') throw new Error('Unkown body length');
       this.state = "BODY_RAW";
+    } else {
+      this.state = "BODY_SIZED";
     }
   }
 };
@@ -176,6 +198,17 @@ HTTPParser.prototype.BODY_CHUNK = function () {
 
 HTTPParser.prototype.BODY_RAW = function () {
   var length = this.end - this.offset;
+  this.offset += length;
+  this.body_bytes -= length;
+};
+
+HTTPParser.prototype.BODY_SIZED = function () {
+  var length = Math.min(this.end - this.offset, this.body_bytes);
   this.onBody(this.chunk, this.offset, length);
   this.offset += length;
+  this.body_bytes -= length;
+  if (!this.body_bytes) {
+    this.onMessageComplete();
+    this.state = 'UNINITIALIZED';
+  }
 };
