@@ -117,11 +117,17 @@ HTTPParser.prototype.HEADER = function () {
   }
   if (line) {
     var match = headerExp.exec(line);
-    var k = match && match[1].toLowerCase();
+    var k = match && match[1];
     var v = match && match[2];
     if (k) { // skip empty string (malformed header)
+      if (!this.preserveCase) {
+        k = k.toLowerCase();
+      }
       this.info.headers.push(k);
       this.info.headers.push(v);
+      if (this.preserveCase) {
+        k = k.toLowerCase();
+      }
       if (k === 'transfer-encoding') {
         this.encoding = v;
       } else if (k === 'content-length') {
