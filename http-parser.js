@@ -204,8 +204,8 @@ HTTPParser.prototype.BODY_CHUNK = function () {
 
 HTTPParser.prototype.BODY_RAW = function () {
   var length = this.end - this.offset;
+  this.onBody(this.chunk, this.offset, length);
   this.offset += length;
-  this.body_bytes -= length;
 };
 
 HTTPParser.prototype.BODY_SIZED = function () {
