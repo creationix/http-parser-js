@@ -1,6 +1,6 @@
 {
   "name": "http-parser-js",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A pure JS HTTP parser for node.",
   "main": "http-parser.js",
   "scripts": {
@@ -13,6 +13,10 @@
   "keywords": [
     "http"
   ],
-  "author": "Tim Caswell",
+  "author": "Tim Caswell (https://github.com/creationix)",
+  "contributors": [
+    "Jimb Esser (https://github.com/Jimbly)",
+    "Lawrence Rowe (https://github.com/lrowe)"
+  ],
   "license": "MIT"
 }
