@@ -138,7 +138,8 @@ HTTPParser.prototype.HEADER = function () {
     }
   } else {
     //console.log(this.info.headers);
-    this.info.upgrade = !!this.info.headers.upgrade;
+    this.info.upgrade = !!this.info.headers.upgrade ||
+      this.info.method === 'CONNECT';
     this.onHeadersComplete(this.info);
     // Set ``this.headResponse = true;`` to ignore Content-Length.
     if (this.headResponse) {
