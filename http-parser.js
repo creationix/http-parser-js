@@ -86,7 +86,7 @@ HTTPParser.prototype.consumeLine = function () {
   }
 };
 
-var requestExp = /^([A-Z]+) (.*) HTTP\/([0-9]).([0-9])$/;
+var requestExp = /^([A-Z]+) (.*) HTTP\/([0-9])\.([0-9])$/;
 HTTPParser.prototype.REQUEST_LINE = function () {
   var line = this.consumeLine();
   if (line === undefined) {
@@ -100,7 +100,7 @@ HTTPParser.prototype.REQUEST_LINE = function () {
   this.state = "HEADER";
 };
 
-var responseExp = /^HTTP\/([0-9]).([0-9]) (\d+) ([^\n\r]+)$/;
+var responseExp = /^HTTP\/([0-9])\.([0-9]) (\d+) ([^\n\r]+)$/;
 HTTPParser.prototype.RESPONSE_LINE = function () {
   var line = this.consumeLine();
   if (line === undefined) {
