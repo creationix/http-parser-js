@@ -26,8 +26,15 @@ function HTTPParser(type) {
 }
 HTTPParser.REQUEST = "REQUEST";
 HTTPParser.RESPONSE = "RESPONSE";
+var kOnHeaders = HTTPParser.kOnHeaders = 0; //unused
+var kOnHeadersComplete = HTTPParser.kOnHeadersComplete = 1;
+var kOnBody = HTTPParser.kOnBody = 2;
+var kOnMessageComplete = HTTPParser.kOnMessageComplete = 3;
 HTTPParser.prototype.reinitialize = HTTPParser;
-HTTPParser.prototype.finish = function () {
+HTTPParser.prototype.finish =
+HTTPParser.prototype.close =
+HTTPParser.prototype.pause = //TODO: pause/resume
+HTTPParser.prototype.resume = function () {
 };
 var state_handles_increment = {
   BODY_RAW: true,
@@ -35,6 +42,10 @@ var state_handles_increment = {
   BODY_CHUNK: true
 };
 HTTPParser.prototype.execute = function (chunk, offset, length) {
+  // backward compat to node < 0.11.4
+  offset = offset || 0;
+  length = typeof length === 'number' ? length : chunk.length;
+
 //  console.log({
 //    chunk: chunk.toString("utf8", offset, length),
 //    offset: offset,
@@ -75,7 +86,7 @@ HTTPParser.prototype.consumeLine = function () {
   }
 };
 
-var requestExp = /^([A-Z]+) (.*) HTTP\/([0-9]).([0-9])$/;
+var requestExp = /^([A-Z]+) (.*) HTTP\/([0-9])\.([0-9])$/;
 HTTPParser.prototype.REQUEST_LINE = function () {
   var line = this.consumeLine();
   if (line === undefined) {
@@ -89,7 +100,7 @@ HTTPParser.prototype.REQUEST_LINE = function () {
   this.state = "HEADER";
 };
 
-var responseExp = /^HTTP\/([0-9]).([0-9]) (\d+) ([^\n\r]+)$/;
+var responseExp = /^HTTP\/([0-9])\.([0-9]) (\d+) ([^\n\r]+)$/;
 HTTPParser.prototype.RESPONSE_LINE = function () {
   var line = this.consumeLine();
   if (line === undefined) {
@@ -140,10 +151,10 @@ HTTPParser.prototype.HEADER = function () {
     //console.log(this.info.headers);
     this.info.upgrade = !!this.info.headers.upgrade ||
       this.info.method === 'CONNECT';
-    this.onHeadersComplete(this.info);
+    this[kOnHeadersComplete](this.info);
     // Set ``this.headResponse = true;`` to ignore Content-Length.
     if (this.headResponse) {
-      this.onMessageComplete();
+      this[kOnMessageComplete]();
       this.state = 'UNINITIALIZED';
     } else if (this.encoding === 'chunked') {
       this.state = "BODY_CHUNKHEAD";
@@ -166,7 +177,7 @@ HTTPParser.prototype.BODY_CHUNKHEAD = function () {
   //console.log({chunk: this.chunk.toString('utf8', this.offset-4, this.offset+4)});
   if (!this.body_bytes) {
     //console.log(this.offset, this.end);
-    this.onMessageComplete();
+    this[kOnMessageComplete]();
     this.state = 'BODY_CHUNKEMPTYLINEDONE';
   } else {
     this.state = 'BODY_CHUNK';
@@ -195,7 +206,7 @@ HTTPParser.prototype.BODY_CHUNK = function () {
   // console.log({offs: this.offset, chunk: this.chunk.toString('utf8', this.offset, this.offset+4),
   //   next: this.chunk.toString("utf8", this.offset + this.body_bytes, this.offset + this.body_bytes+4)});
   var length = Math.min(this.end - this.offset, this.body_bytes);
-  this.onBody(this.chunk, this.offset, length);
+  this[kOnBody](this.chunk, this.offset, length);
   this.offset += length;
   this.body_bytes -= length;
   if (!this.body_bytes) {
@@ -205,17 +216,43 @@ HTTPParser.prototype.BODY_CHUNK = function () {
 
 HTTPParser.prototype.BODY_RAW = function () {
   var length = this.end - this.offset;
-  this.onBody(this.chunk, this.offset, length);
+  this[kOnBody](this.chunk, this.offset, length);
   this.offset += length;
 };
 
 HTTPParser.prototype.BODY_SIZED = function () {
   var length = Math.min(this.end - this.offset, this.body_bytes);
-  this.onBody(this.chunk, this.offset, length);
+  this[kOnBody](this.chunk, this.offset, length);
   this.offset += length;
   this.body_bytes -= length;
   if (!this.body_bytes) {
-    this.onMessageComplete();
+    this[kOnMessageComplete]();
     this.state = 'UNINITIALIZED';
   }
 };
+
+// backward compat to node < 0.11.6
+Object.defineProperty(HTTPParser.prototype, 'onHeadersComplete', {
+  get: function() {
+    return this[kOnHeadersComplete];
+  },
+  set: function(to) {
+    return (this[kOnHeadersComplete] = to);
+  }
+});
+Object.defineProperty(HTTPParser.prototype, 'onBody', {
+  get: function() {
+    return this[kOnBody];
+  },
+  set: function(to) {
+    return (this[kOnBody] = to);
+  }
+});
+Object.defineProperty(HTTPParser.prototype, 'onMessageComplete', {
+  get: function() {
+    return this[kOnMessageComplete];
+  },
+  set: function(to) {
+    return (this[kOnMessageComplete] = to);
+  }
+});
