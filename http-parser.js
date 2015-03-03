@@ -30,12 +30,41 @@ var kOnHeaders = HTTPParser.kOnHeaders = 0; //unused
 var kOnHeadersComplete = HTTPParser.kOnHeadersComplete = 1;
 var kOnBody = HTTPParser.kOnBody = 2;
 var kOnMessageComplete = HTTPParser.kOnMessageComplete = 3;
+var methods = HTTPParser.methods = [
+  'DELETE',
+  'GET',
+  'HEAD',
+  'POST',
+  'PUT',
+  'CONNECT',
+  'OPTIONS',
+  'TRACE',
+  'COPY',
+  'LOCK',
+  'MKCOL',
+  'MOVE',
+  'PROPFIND',
+  'PROPPATCH',
+  'SEARCH',
+  'UNLOCK',
+  'REPORT',
+  'MKACTIVITY',
+  'CHECKOUT',
+  'MERGE',
+  'M-SEARCH',
+  'NOTIFY',
+  'SUBSCRIBE',
+  'UNSUBSCRIBE',
+  'PATCH',
+  'PURGE'
+];
 HTTPParser.prototype.reinitialize = HTTPParser;
 HTTPParser.prototype.finish =
 HTTPParser.prototype.close =
 HTTPParser.prototype.pause = //TODO: pause/resume
 HTTPParser.prototype.resume = function () {
 };
+HTTPParser.prototype._compatMode = false;
 var state_handles_increment = {
   BODY_RAW: true,
   BODY_SIZED: true,
@@ -93,10 +122,10 @@ HTTPParser.prototype.REQUEST_LINE = function () {
     return;
   }
   var match = requestExp.exec(line);
-  this.info.method = match[1];
+  this.info.method = this._compatMode ? match[1] : methods.indexOf(match[1]);
   this.info.url = match[2];
-  this.info.versionMajor = match[3];
-  this.info.versionMinor = match[4];
+  this.info.versionMajor = parseInt(match[3], 10);
+  this.info.versionMinor = parseInt(match[4], 10);
   this.state = "HEADER";
 };
 
@@ -107,15 +136,15 @@ HTTPParser.prototype.RESPONSE_LINE = function () {
     return;
   }
   var match = responseExp.exec(line);
-  var versionMajor = this.info.versionMajor = match[1];
-  var versionMinor = this.info.versionMinor = match[2];
+  var versionMajor = this.info.versionMajor = parseInt(match[1], 10);
+  var versionMinor = this.info.versionMinor = parseInt(match[2], 10);
   var statusCode = this.info.statusCode = Number(match[3]);
   this.info.statusMsg = match[4];
   // Implied zero length.
   if ((statusCode / 100 | 0) === 1 || statusCode === 204 || statusCode === 304) {
     this.body_bytes = 0;
   }
-  if (versionMajor === '1' && versionMinor === '0') {
+  if (versionMajor === 1 && versionMinor === 0) {
     this.connection = 'close';
   }
   this.state = "HEADER";
@@ -150,7 +179,9 @@ HTTPParser.prototype.HEADER = function () {
   } else {
     //console.log(this.info.headers);
     this.info.upgrade = !!this.info.headers.upgrade ||
+      this.info.method === 5 || // index of 'CONNECT' in HTTPParser.methods
       this.info.method === 'CONNECT';
+    this.info.shouldKeepAlive = false; //TODO
     this[kOnHeadersComplete](this.info);
     // Set ``this.headResponse = true;`` to ignore Content-Length.
     if (this.headResponse) {
@@ -237,6 +268,8 @@ Object.defineProperty(HTTPParser.prototype, 'onHeadersComplete', {
     return this[kOnHeadersComplete];
   },
   set: function(to) {
+    // hack for backward compatibility
+    this._compatMode = true;
     return (this[kOnHeadersComplete] = to);
   }
 });
