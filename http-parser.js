@@ -19,6 +19,7 @@ function HTTPParser(type) {
     headers: []
   };
   this.lineState = "DATA";
+  this.type = type;
   this.encoding = null;
   this.connection = null;
   this.body_bytes = null;
@@ -191,7 +192,12 @@ HTTPParser.prototype.HEADER = function () {
       this.state = "BODY_CHUNKHEAD";
     } else if (this.body_bytes === null) {
       //if (this.connection !== 'close') throw new Error('Unkown body length');
-      this.state = "BODY_RAW";
+      if (this.type === 'RESPONSE') {
+        this.state = "BODY_RAW";
+      } else {
+        this[kOnMessageComplete]();
+        this.state = 'UNINITIALIZED';
+      }
     } else {
       this.state = "BODY_SIZED";
     }
