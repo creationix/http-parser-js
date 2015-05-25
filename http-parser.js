@@ -4,29 +4,24 @@ var assert = require('assert');
 
 exports.HTTPParser = HTTPParser;
 function HTTPParser(type) {
-  // These fields are set once, do *not* clear on reinitialize!
-  // this.onHeaders = parserOnHeaders(headers, url)
-  // this.onHeadersComplete = parserOnHeadersComplete(info)
-  // this.onBody = parserOnBody(b, start, len)
-  // this.onMessageComplete = parserOnMessageComplete()
-  // this.socket = null;
-  // this.incoming = null;
-  // this._headers = [];
-  // this._url = '';
-  assert.ok(type === 'REQUEST' || type === 'RESPONSE');
+  assert.ok(type === HTTPParser.REQUEST || type === HTTPParser.RESPONSE);
+  this.type = type;
   this.state = type + '_LINE';
   this.info = {
-    headers: []
+    headers: [],
+    upgrade: false
   };
-  this.lineState = "DATA";
-  this.encoding = null;
-  this.connection = null;
+  this.trailers = [];
+  this.line = '';
+  this.isChunked = false;
+  this.connection = '';
+  this.headerSize = 0; // for preventing too big headers
   this.body_bytes = null;
-  this.headResponse = null;
+  this.isUserCall = false;
 }
-HTTPParser.REQUEST = "REQUEST";
-HTTPParser.RESPONSE = "RESPONSE";
-var kOnHeaders = HTTPParser.kOnHeaders = 0; //unused
+HTTPParser.REQUEST = 'REQUEST';
+HTTPParser.RESPONSE = 'RESPONSE';
+var kOnHeaders = HTTPParser.kOnHeaders = 0;
 var kOnHeadersComplete = HTTPParser.kOnHeadersComplete = 1;
 var kOnBody = HTTPParser.kOnBody = 2;
 var kOnMessageComplete = HTTPParser.kOnMessageComplete = 3;
@@ -59,141 +54,225 @@ var methods = HTTPParser.methods = [
   'PURGE'
 ];
 HTTPParser.prototype.reinitialize = HTTPParser;
-HTTPParser.prototype.finish =
 HTTPParser.prototype.close =
-HTTPParser.prototype.pause = //TODO: pause/resume
-HTTPParser.prototype.resume = function () {
-};
+HTTPParser.prototype.pause =
+HTTPParser.prototype.resume = function () {};
 HTTPParser.prototype._compatMode = false;
-var state_handles_increment = {
-  BODY_RAW: true,
-  BODY_SIZED: true,
-  BODY_CHUNK: true
+
+var maxHeaderSize = 80 * 1024;
+var headerState = {
+  REQUEST_LINE: true,
+  RESPONSE_LINE: true,
+  HEADER: true
 };
-HTTPParser.prototype.execute = function (chunk, offset, length) {
+HTTPParser.prototype.execute = function (chunk, start, length) {
+  if (!(this instanceof HTTPParser)) {
+    throw new TypeError('not a HTTPParser');
+  }
+  
   // backward compat to node < 0.11.4
-  offset = offset || 0;
+  // Note: the start and length params were removed in newer version
+  start = start || 0;
   length = typeof length === 'number' ? length : chunk.length;
 
-//  console.log({
-//    chunk: chunk.toString("utf8", offset, length),
-//    offset: offset,
-//    length: length
-//  });
   this.chunk = chunk;
-  this.start = offset;
-  this.offset = offset;
-  this.end = offset + length;
-  while (this.offset < this.end && this.state !== "UNINITIALIZED") {
-    var state = this.state;
-    this[state]();
-    if (!state_handles_increment[state]) {
-      this.offset++;
+  this.offset = start;
+  var end = this.end = start + length;
+  try {
+    while (this.offset < end) {
+      if (this[this.state]()) {
+        break;
+      }
+    }
+  } catch (err) {
+    if (this.isUserCall) {
+      throw err;
+    }
+    return err;
+  }
+  this.chunk = null;
+  var length = this.offset - start
+  if (headerState[this.state]) {
+    this.headerSize += length;
+    if (this.headerSize > maxHeaderSize) {
+      return new Error('max header size exceeded');
     }
   }
+  return length;
+};
+
+var stateFinishAllowed = {
+  REQUEST_LINE: true,
+  RESPONSE_LINE: true,
+  BODY_RAW: true
+};
+HTTPParser.prototype.finish = function () {
+  if (!stateFinishAllowed[this.state]) {
+    return new Error('invalid state for EOF');
+  }
+  if (this.state === 'BODY_RAW') {
+    this.userCall()(this[kOnMessageComplete]());
+  }
+};
+
+//For correct error handling - see HTTPParser#execute
+//Usage: this.userCall()(userFunction('arg'));
+HTTPParser.prototype.userCall = function () {
+  this.isUserCall = true;
+  var self = this;
+  return function (ret) {
+    self.isUserCall = false;
+    return ret;
+  };
+};
+
+HTTPParser.prototype.nextRequest = function () {
+  this.userCall()(this[kOnMessageComplete]());
+  this.reinitialize(this.type);
 };
 
 HTTPParser.prototype.consumeLine = function () {
-  if (this.captureStart === undefined) {
-    this.captureStart = this.offset;
-  }
-  var byte = this.chunk[this.offset];
-  if (byte === 0x0d && this.lineState === "DATA") { // \r
-    this.captureEnd = this.offset;
-    this.lineState = "ENDING";
-    return;
-  }
-  if (this.lineState === "ENDING") {
-    this.lineState = "DATA";
-    if (byte !== 0x0a) {
-      return;
+  var end = this.end,
+      chunk = this.chunk;
+  for (var i = this.offset; i < end; i++) {
+    if (chunk[i] === 0x0a) { // \n
+      var line = this.line + chunk.toString('ascii', this.offset, i);
+      if (line.charAt(line.length - 1) === '\r') {
+        line = line.substr(0, line.length - 1);
+      }
+      this.line = '';
+      this.offset = i + 1;
+      return line;
     }
-    var line = this.chunk.toString("ascii", this.captureStart, this.captureEnd);
-    this.captureStart = undefined;
-    this.captureEnd = undefined;
-    return line;
+  }
+  //line split over multiple chunks
+  this.line += chunk.toString('ascii', this.offset, this.end);
+  this.offset = this.end;
+};
+
+var headerExp = /^([^: \t]+):[ \t]*((?:.*[^ \t])|)/;
+var headerContinueExp = /^[ \t]+(.*[^ \t])/;
+HTTPParser.prototype.parseHeader = function (line, headers) {
+  var match = headerExp.exec(line);
+  var k = match && match[1];
+  if (k) { // skip empty string (malformed header)
+    headers.push(k);
+    headers.push(match[2]);
+  } else {
+    var matchContinue = headerContinueExp.exec(line);
+    if (matchContinue && headers.length) {
+      if (headers[headers.length - 1]) {
+        headers[headers.length - 1] += ' ';
+      }
+      headers[headers.length - 1] += matchContinue[1];
+    }
   }
 };
 
-var requestExp = /^([A-Z]+) (.*) HTTP\/([0-9])\.([0-9])$/;
+var requestExp = /^([A-Z-]+) ([^ ]+) HTTP\/(\d)\.(\d)$/;
 HTTPParser.prototype.REQUEST_LINE = function () {
   var line = this.consumeLine();
-  if (line === undefined) {
+  if (!line) {
     return;
   }
   var match = requestExp.exec(line);
+  if (match === null) {
+    var err = new Error('Parse Error');
+    err.code = 'HPE_INVALID_CONSTANT';
+    throw err;
+  }
   this.info.method = this._compatMode ? match[1] : methods.indexOf(match[1]);
+  if (this.info.method === -1) {
+    throw new Error('invalid request method');
+  }
+  if (match[1] === 'CONNECT') {
+    this.info.upgrade = true;
+  }
   this.info.url = match[2];
-  this.info.versionMajor = parseInt(match[3], 10);
-  this.info.versionMinor = parseInt(match[4], 10);
-  this.state = "HEADER";
+  this.info.versionMajor = +match[3];
+  this.info.versionMinor = +match[4];
+  this.body_bytes = 0;
+  this.state = 'HEADER';
 };
 
-var responseExp = /^HTTP\/([0-9])\.([0-9]) (\d+) ([^\n\r]+)$/;
+var responseExp = /^HTTP\/(\d)\.(\d) (\d{3}) ?(.*)$/;
 HTTPParser.prototype.RESPONSE_LINE = function () {
   var line = this.consumeLine();
-  if (line === undefined) {
+  if (!line) {
     return;
   }
   var match = responseExp.exec(line);
-  var versionMajor = this.info.versionMajor = parseInt(match[1], 10);
-  var versionMinor = this.info.versionMinor = parseInt(match[2], 10);
-  var statusCode = this.info.statusCode = Number(match[3]);
-  this.info.statusMsg = match[4];
+  if (match === null) {
+    var err = new Error('Parse Error');
+    err.code = 'HPE_INVALID_CONSTANT';
+    throw err;
+  }
+  this.info.versionMajor = +match[1];
+  this.info.versionMinor = +match[2];
+  var statusCode = this.info.statusCode = +match[3];
+  this.info.statusMessage = match[4];
   // Implied zero length.
   if ((statusCode / 100 | 0) === 1 || statusCode === 204 || statusCode === 304) {
     this.body_bytes = 0;
   }
-  if (versionMajor === 1 && versionMinor === 0) {
-    this.connection = 'close';
-  }
-  this.state = "HEADER";
+  this.state = 'HEADER';
 };
-var headerExp = /^([^:]*): *(.*)$/;
+
+HTTPParser.prototype.shouldKeepAlive = function () {
+  if (this.info.versionMajor > 0 && this.info.versionMinor > 0) {
+    if (this.connection.indexOf('close') !== -1) {
+      return false;
+    }
+  } else if (this.connection.indexOf('keep-alive') === -1) {
+    return false;
+  }
+  if (this.body_bytes !== null || this.isChunked) { // || skipBody
+    return true;
+  }
+  return false;
+};
+
 HTTPParser.prototype.HEADER = function () {
   var line = this.consumeLine();
   if (line === undefined) {
     return;
   }
   if (line) {
-    var match = headerExp.exec(line);
-    var k = match && match[1];
-    var v = match && match[2];
-    if (k) { // skip empty string (malformed header)
-      if (!this.preserveCase) {
-        k = k.toLowerCase();
-      }
-      this.info.headers.push(k);
-      this.info.headers.push(v);
-      if (this.preserveCase) {
-        k = k.toLowerCase();
-      }
-      if (k === 'transfer-encoding') {
-        this.encoding = v;
-      } else if (k === 'content-length') {
-        this.body_bytes = parseInt(v, 10);
-      } else if (k === 'connection') {
-        this.connection = v;
+    this.parseHeader(line, this.info.headers);
+  } else {
+    var headers = this.info.headers;
+    for (var i = 0; i < headers.length; i += 2) {
+      switch (headers[i].toLowerCase()) {
+        case 'transfer-encoding':
+          this.isChunked = headers[i + 1].toLowerCase() === 'chunked';
+          break;
+        case 'content-length':
+          this.body_bytes = +headers[i + 1];
+          break;
+        case 'connection':
+          this.connection += headers[i + 1].toLowerCase();
+          break;
+        case 'upgrade':
+          this.info.upgrade = true;
+          break;
       }
     }
-  } else {
-    //console.log(this.info.headers);
-    this.info.upgrade = !!this.info.headers.upgrade ||
-      this.info.method === 5 || // index of 'CONNECT' in HTTPParser.methods
-      this.info.method === 'CONNECT';
-    this.info.shouldKeepAlive = false; //TODO
-    this[kOnHeadersComplete](this.info);
-    // Set ``this.headResponse = true;`` to ignore Content-Length.
-    if (this.headResponse) {
-      this[kOnMessageComplete]();
-      this.state = 'UNINITIALIZED';
-    } else if (this.encoding === 'chunked') {
-      this.state = "BODY_CHUNKHEAD";
+    
+    this.info.shouldKeepAlive = this.shouldKeepAlive();
+    //problem which also exists in original node: we should know skipBody before calling onHeadersComplete
+    var skipBody = this.userCall()(this[kOnHeadersComplete](this.info));
+    
+    if (this.info.upgrade) {
+      this.nextRequest();
+      return true;
+    } else if (this.isChunked && !skipBody) {
+      this.state = 'BODY_CHUNKHEAD';
+    } else if (skipBody || this.body_bytes === 0) {
+      this.nextRequest();
     } else if (this.body_bytes === null) {
-      //if (this.connection !== 'close') throw new Error('Unkown body length');
-      this.state = "BODY_RAW";
+      this.state = 'BODY_RAW';
     } else {
-      this.state = "BODY_SIZED";
+      this.state = 'BODY_SIZED';
     }
   }
 };
@@ -204,14 +283,20 @@ HTTPParser.prototype.BODY_CHUNKHEAD = function () {
     return;
   }
   this.body_bytes = parseInt(line, 16);
-  //console.log('BODY BYTES', this.body_bytes, {s:line});
-  //console.log({chunk: this.chunk.toString('utf8', this.offset-4, this.offset+4)});
   if (!this.body_bytes) {
-    //console.log(this.offset, this.end);
-    this[kOnMessageComplete]();
-    this.state = 'BODY_CHUNKEMPTYLINEDONE';
+    this.state = 'BODY_CHUNKTRAILERS';
   } else {
     this.state = 'BODY_CHUNK';
+  }
+};
+
+HTTPParser.prototype.BODY_CHUNK = function () {
+  var length = Math.min(this.end - this.offset, this.body_bytes);
+  this.userCall()(this[kOnBody](this.chunk, this.offset, length));
+  this.offset += length;
+  this.body_bytes -= length;
+  if (!this.body_bytes) {
+    this.state = 'BODY_CHUNKEMPTYLINE';
   }
 };
 
@@ -224,68 +309,48 @@ HTTPParser.prototype.BODY_CHUNKEMPTYLINE = function () {
   this.state = 'BODY_CHUNKHEAD';
 };
 
-HTTPParser.prototype.BODY_CHUNKEMPTYLINEDONE = function () {
+HTTPParser.prototype.BODY_CHUNKTRAILERS = function () {
   var line = this.consumeLine();
   if (line === undefined) {
     return;
   }
-  assert.equal(line, '');
-  this.state = 'UNINITIALIZED';
-};
-
-HTTPParser.prototype.BODY_CHUNK = function () {
-  // console.log({offs: this.offset, chunk: this.chunk.toString('utf8', this.offset, this.offset+4),
-  //   next: this.chunk.toString("utf8", this.offset + this.body_bytes, this.offset + this.body_bytes+4)});
-  var length = Math.min(this.end - this.offset, this.body_bytes);
-  this[kOnBody](this.chunk, this.offset, length);
-  this.offset += length;
-  this.body_bytes -= length;
-  if (!this.body_bytes) {
-    this.state = 'BODY_CHUNKEMPTYLINE';
+  if (line) {
+    this.parseHeader(line, this.trailers);
+  } else {
+    if (this.trailers.length) {
+      this.userCall()(this[kOnHeaders](this.trailers, this.info.url));
+    }
+    this.nextRequest();
   }
 };
 
 HTTPParser.prototype.BODY_RAW = function () {
   var length = this.end - this.offset;
-  this[kOnBody](this.chunk, this.offset, length);
-  this.offset += length;
+  this.userCall()(this[kOnBody](this.chunk, this.offset, length));
+  this.offset = this.end;
 };
 
 HTTPParser.prototype.BODY_SIZED = function () {
   var length = Math.min(this.end - this.offset, this.body_bytes);
-  this[kOnBody](this.chunk, this.offset, length);
+  this.userCall()(this[kOnBody](this.chunk, this.offset, length));
   this.offset += length;
   this.body_bytes -= length;
   if (!this.body_bytes) {
-    this[kOnMessageComplete]();
-    this.state = 'UNINITIALIZED';
+    this.nextRequest();
   }
 };
 
 // backward compat to node < 0.11.6
-Object.defineProperty(HTTPParser.prototype, 'onHeadersComplete', {
-  get: function() {
-    return this[kOnHeadersComplete];
-  },
-  set: function(to) {
-    // hack for backward compatibility
-    this._compatMode = true;
-    return (this[kOnHeadersComplete] = to);
-  }
-});
-Object.defineProperty(HTTPParser.prototype, 'onBody', {
-  get: function() {
-    return this[kOnBody];
-  },
-  set: function(to) {
-    return (this[kOnBody] = to);
-  }
-});
-Object.defineProperty(HTTPParser.prototype, 'onMessageComplete', {
-  get: function() {
-    return this[kOnMessageComplete];
-  },
-  set: function(to) {
-    return (this[kOnMessageComplete] = to);
-  }
+['Headers', 'HeadersComplete', 'Body', 'MessageComplete'].forEach(function (name) {
+  var k = HTTPParser['kOn' + name];
+  Object.defineProperty(HTTPParser.prototype, 'on' + name, {
+    get: function () {
+      return this[k];
+    },
+    set: function (to) {
+      // hack for backward compatibility
+      this._compatMode = true;
+      return (this[k] = to);
+    }
+  });
 });

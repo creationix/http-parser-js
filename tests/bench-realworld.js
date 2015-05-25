@@ -1,6 +1,6 @@
-if (process.env.USE_JS) {
-  process.binding("http_parser").HTTPParser = require('./http_parser').HTTPParser;
-}
+//if (process.env.USE_JS) {
+  process.binding("http_parser").HTTPParser = require('../http-parser.js').HTTPParser;
+//}
 
 var http = require('http');
 
@@ -22,7 +22,7 @@ server.listen(8080, function () {
     path: "/",
     port: 8080
   };
-  if (process.env.NODE_CLIENT) {
+  //if (process.env.NODE_CLIENT) {
   
     function request() {
       var req = http.request(params, function (res) {
@@ -34,14 +34,18 @@ server.listen(8080, function () {
     request(); 
     var count = 0;
     var before = Date.now();
+    var res = [];
     setInterval(function () {
       var now = Date.now();
       var delta = now - before;
       before = now;
       var rps = Math.round(count / delta * 1000);
-      console.log("%s req/second (%s reqs in %s ms)", rps, count, delta);
+      res.push(rps);
+      res.sort(function(a, b) { return a - b; });
+      var median = res[res.length >> 1];
+      console.log("%s req/second (%s reqs in %s ms) median: %s", rps, count, delta, median);
       count = 0;
     }, 1000);
-  }  
+  //}  
   
 });
