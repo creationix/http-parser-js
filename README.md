@@ -24,16 +24,6 @@ Simply do `npm test`. The tests are copied from node and mscedex/io.js, with som
 
 This should now be usable in any node application, it now supports (nearly) everything `http_parser.c` does while still being tolerant with corrupted headers.
 
-## Old Status II
-
-This has been used sucessfully in some site scraping tools using "request" which otherwise failed due to node HTTP parsing issues.
-
-## Old Status
-
-This is still in early development.  It can respond to basic HTTP GET requests like the standard HTTP hello-world.  In initial testing it's 8% faster for non-keepalive requests.
-
-The plan is to port the unit tests from the http-parser.  Once we have all tests passing the node http tests can be run using the monkey-patch method above.  Once all those pass, we're good to go.  Hopefully this will still be faster by then.
-
 ## License
 
 MIT. See LICENSE.md
