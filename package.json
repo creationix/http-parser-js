@@ -1,10 +1,10 @@
 {
   "name": "http-parser-js",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "A pure JS HTTP parser for node.",
   "main": "http-parser.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "python tests/test.py && node tests/iojs/test-http-parser-durability.js"
   },
   "repository": {
     "type": "git",
