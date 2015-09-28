@@ -25,6 +25,16 @@ var kOnHeaders = HTTPParser.kOnHeaders = 0;
 var kOnHeadersComplete = HTTPParser.kOnHeadersComplete = 1;
 var kOnBody = HTTPParser.kOnBody = 2;
 var kOnMessageComplete = HTTPParser.kOnMessageComplete = 3;
+
+var compatMode0_12 = true;
+Object.defineProperty(HTTPParser, 'kOnExecute', {
+    get: function () {
+      // hack for backward compatibility
+      compatMode0_12 = false;
+      return 4;
+    }
+  });
+
 var methods = HTTPParser.methods = [
   'DELETE',
   'GET',
@@ -51,13 +61,14 @@ var methods = HTTPParser.methods = [
   'SUBSCRIBE',
   'UNSUBSCRIBE',
   'PATCH',
-  'PURGE'
+  'PURGE',
+  'MKCALENDAR'
 ];
 HTTPParser.prototype.reinitialize = HTTPParser;
 HTTPParser.prototype.close =
 HTTPParser.prototype.pause =
 HTTPParser.prototype.resume = function () {};
-HTTPParser.prototype._compatMode = false;
+HTTPParser.prototype._compatMode0_11 = false;
 
 var maxHeaderSize = 80 * 1024;
 var headerState = {
@@ -114,6 +125,13 @@ HTTPParser.prototype.finish = function () {
     this.userCall()(this[kOnMessageComplete]());
   }
 };
+
+// These three methods are used for an internal speed optimization, and it also
+// works if theses are noops. Basically consume() asks us to read the bytes
+// ourselves, but if we don't do it we get them through execute().
+HTTPParser.prototype.consume =
+HTTPParser.prototype.unconsume =
+HTTPParser.prototype.getCurrentBuffer = function () {};
 
 //For correct error handling - see HTTPParser#execute
 //Usage: this.userCall()(userFunction('arg'));
@@ -181,7 +199,7 @@ HTTPParser.prototype.REQUEST_LINE = function () {
     err.code = 'HPE_INVALID_CONSTANT';
     throw err;
   }
-  this.info.method = this._compatMode ? match[1] : methods.indexOf(match[1]);
+  this.info.method = this._compatMode0_11 ? match[1] : methods.indexOf(match[1]);
   if (this.info.method === -1) {
     throw new Error('invalid request method');
   }
@@ -237,10 +255,11 @@ HTTPParser.prototype.HEADER = function () {
   if (line === undefined) {
     return;
   }
+  var info = this.info;
   if (line) {
-    this.parseHeader(line, this.info.headers);
+    this.parseHeader(line, info.headers);
   } else {
-    var headers = this.info.headers;
+    var headers = info.headers;
     for (var i = 0; i < headers.length; i += 2) {
       switch (headers[i].toLowerCase()) {
         case 'transfer-encoding':
@@ -253,16 +272,23 @@ HTTPParser.prototype.HEADER = function () {
           this.connection += headers[i + 1].toLowerCase();
           break;
         case 'upgrade':
-          this.info.upgrade = true;
+          info.upgrade = true;
           break;
       }
     }
     
-    this.info.shouldKeepAlive = this.shouldKeepAlive();
+    info.shouldKeepAlive = this.shouldKeepAlive();
     //problem which also exists in original node: we should know skipBody before calling onHeadersComplete
-    var skipBody = this.userCall()(this[kOnHeadersComplete](this.info));
+    var skipBody;
+    if (compatMode0_12) {
+      skipBody = this.userCall()(this[kOnHeadersComplete](info));
+    } else {
+      skipBody = this.userCall()(this[kOnHeadersComplete](info.versionMajor,
+          info.versionMinor, info.headers, info.method, info.url, info.statusCode,
+          info.statusMessage, info.upgrade, info.shouldKeepAlive));
+    }
     
-    if (this.info.upgrade) {
+    if (info.upgrade) {
       this.nextRequest();
       return true;
     } else if (this.isChunked && !skipBody) {
@@ -318,7 +344,7 @@ HTTPParser.prototype.BODY_CHUNKTRAILERS = function () {
     this.parseHeader(line, this.trailers);
   } else {
     if (this.trailers.length) {
-      this.userCall()(this[kOnHeaders](this.trailers, this.info.url));
+      this.userCall()(this[kOnHeaders](this.trailers, ''));
     }
     this.nextRequest();
   }
@@ -349,7 +375,7 @@ HTTPParser.prototype.BODY_SIZED = function () {
     },
     set: function (to) {
       // hack for backward compatibility
-      this._compatMode = true;
+      this._compatMode0_11 = true;
       return (this[k] = to);
     }
   });

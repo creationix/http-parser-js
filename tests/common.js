@@ -1,57 +1,163 @@
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+'use strict';
 process.binding('http_parser').HTTPParser = require('../http-parser.js').HTTPParser;
 
 var path = require('path');
 var fs = require('fs');
 var assert = require('assert');
 var os = require('os');
+var child_process = require('child_process');
 
 exports.testDir = path.dirname(__filename);
 exports.fixturesDir = path.join(exports.testDir, 'fixtures');
 exports.libDir = path.join(exports.testDir, '../lib');
-exports.tmpDir = path.join(exports.testDir, 'tmp');
-if (process.env.NODE_PIPE_DIR === undefined) {
-  exports.pipeTmpDir = exports.tmpDir;
-} else {
-  exports.pipeTmpDir = path.join(process.env.NODE_PIPE_DIR, 'NodePipeTmp');
-}
+exports.tmpDirName = 'tmp';
 exports.PORT = +process.env.NODE_COMMON_PORT || 12346;
+exports.isWindows = process.platform === 'win32';
+exports.isAix = process.platform === 'aix';
 
-exports.opensslCli = path.join(path.dirname(process.execPath), 'openssl-cli');
-if (process.platform === 'win32') {
-  exports.PIPE = '\\\\.\\pipe\\libuv-test';
-  exports.opensslCli += '.exe';
-} else {
-  exports.PIPE = exports.pipeTmpDir + '/test.sock';
+function rimrafSync(p) {
+  try {
+    var st = fs.lstatSync(p);
+  } catch (e) {
+    if (e.code === 'ENOENT')
+      return;
+  }
+
+  try {
+    if (st && st.isDirectory())
+      rmdirSync(p, null);
+    else
+      fs.unlinkSync(p);
+  } catch (e) {
+    if (e.code === 'ENOENT')
+      return;
+    if (e.code === 'EPERM')
+      return rmdirSync(p, er);
+    if (e.code !== 'EISDIR')
+      throw e;
+    rmdirSync(p, e);
+  }
 }
-if (!fs.existsSync(exports.opensslCli))
-  exports.opensslCli = false;
 
-if (process.platform === 'win32') {
+function rmdirSync(p, originalEr) {
+  try {
+    fs.rmdirSync(p);
+  } catch (e) {
+    if (e.code === 'ENOTDIR')
+      throw originalEr;
+    if (e.code === 'ENOTEMPTY' || e.code === 'EEXIST' || e.code === 'EPERM') {
+      fs.readdirSync(p).forEach(function(f) {
+        rimrafSync(path.join(p, f));
+      });
+      fs.rmdirSync(p);
+    }
+  }
+}
+
+exports.refreshTmpDir = function() {
+  rimrafSync(exports.tmpDir);
+  fs.mkdirSync(exports.tmpDir);
+};
+
+if (process.env.TEST_THREAD_ID) {
+  // Distribute ports in parallel tests
+  if (!process.env.NODE_COMMON_PORT)
+    exports.PORT += +process.env.TEST_THREAD_ID * 100;
+
+  exports.tmpDirName += '.' + process.env.TEST_THREAD_ID;
+}
+exports.tmpDir = path.join(exports.testDir, exports.tmpDirName);
+
+var opensslCli = null;
+var inFreeBSDJail = null;
+var localhostIPv4 = null;
+
+Object.defineProperty(exports, 'inFreeBSDJail', {
+  get: function() {
+    if (inFreeBSDJail !== null) return inFreeBSDJail;
+
+    if (process.platform === 'freebsd' &&
+      child_process.execSync('sysctl -n security.jail.jailed').toString() ===
+      '1\n') {
+      inFreeBSDJail = true;
+    } else {
+      inFreeBSDJail = false;
+    }
+    return inFreeBSDJail;
+  }
+});
+
+Object.defineProperty(exports, 'localhostIPv4', {
+  get: function() {
+    if (localhostIPv4 !== null) return localhostIPv4;
+
+    if (exports.inFreeBSDJail) {
+      // Jailed network interfaces are a bit special - since we need to jump
+      // through loops, as well as this being an exception case, assume the
+      // user will provide this instead.
+      if (process.env.LOCALHOST) {
+        localhostIPv4 = process.env.LOCALHOST;
+      } else {
+        console.error('Looks like we\'re in a FreeBSD Jail. ' +
+                      'Please provide your default interface address ' +
+                      'as LOCALHOST or expect some tests to fail.');
+      }
+    }
+
+    if (localhostIPv4 === null) localhostIPv4 = '127.0.0.1';
+
+    return localhostIPv4;
+  }
+});
+
+// opensslCli defined lazily to reduce overhead of spawnSync
+Object.defineProperty(exports, 'opensslCli', {get: function() {
+  if (opensslCli !== null) return opensslCli;
+
+  if (process.config.variables.node_shared_openssl) {
+    // use external command
+    opensslCli = 'openssl';
+  } else {
+    // use command built from sources included in Node.js repository
+    opensslCli = path.join(path.dirname(process.execPath), 'openssl-cli');
+  }
+
+  if (exports.isWindows) opensslCli += '.exe';
+
+  var openssl_cmd = child_process.spawnSync(opensslCli, ['version']);
+  if (openssl_cmd.status !== 0 || openssl_cmd.error !== undefined) {
+    // openssl command cannot be executed
+    opensslCli = false;
+  }
+  return opensslCli;
+}, enumerable: true });
+
+Object.defineProperty(exports, 'hasCrypto', {get: function() {
+  return process.versions.openssl ? true : false;
+}});
+
+if (exports.isWindows) {
+  exports.PIPE = '\\\\.\\pipe\\libuv-test';
+} else {
+  exports.PIPE = exports.tmpDir + '/test.sock';
+}
+
+if (process.env.NODE_COMMON_PIPE) {
+  exports.PIPE = process.env.NODE_COMMON_PIPE;
+  // Remove manually, the test runner won't do it
+  // for us like it does for files in test/tmp.
+  try {
+    fs.unlinkSync(exports.PIPE);
+  } catch (e) {
+    // Ignore.
+  }
+}
+
+if (exports.isWindows) {
   exports.faketimeCli = false;
 } else {
-  exports.faketimeCli = path.join(__dirname, "..", "tools", "faketime", "src",
-    "faketime");
+  exports.faketimeCli = path.join(__dirname, '..', 'tools', 'faketime', 'src',
+                                  'faketime');
 }
 
 var ifaces = os.networkInterfaces();
@@ -80,7 +186,7 @@ exports.indirectInstanceOf = function(obj, cls) {
 
 
 exports.ddCommand = function(filename, kilobytes) {
-  if (process.platform === 'win32') {
+  if (exports.isWindows) {
     var p = path.resolve(exports.fixturesDir, 'create-file.js');
     return '"' + process.argv[0] + '" "' + p + '" "' +
            filename + '" ' + (kilobytes * 1024);
@@ -93,7 +199,7 @@ exports.ddCommand = function(filename, kilobytes) {
 exports.spawnCat = function(options) {
   var spawn = require('child_process').spawn;
 
-  if (process.platform === 'win32') {
+  if (exports.isWindows) {
     return spawn('more', [], options);
   } else {
     return spawn('cat', [], options);
@@ -101,14 +207,35 @@ exports.spawnCat = function(options) {
 };
 
 
+exports.spawnSyncCat = function(options) {
+  var spawnSync = require('child_process').spawnSync;
+
+  if (exports.isWindows) {
+    return spawnSync('more', [], options);
+  } else {
+    return spawnSync('cat', [], options);
+  }
+};
+
+
 exports.spawnPwd = function(options) {
   var spawn = require('child_process').spawn;
 
-  if (process.platform === 'win32') {
+  if (exports.isWindows) {
     return spawn('cmd.exe', ['/c', 'cd'], options);
   } else {
     return spawn('pwd', [], options);
   }
+};
+
+exports.platformTimeout = function(ms) {
+  if (process.arch !== 'arm')
+    return ms;
+
+  if (process.config.variables.arm_version === '6')
+    return 7 * ms;  // ARMv6
+
+  return 2 * ms;  // ARMv7 and up.
 };
 
 var knownGlobals = [setTimeout,
@@ -134,8 +261,6 @@ if (global.DTRACE_HTTP_SERVER_RESPONSE) {
   knownGlobals.push(DTRACE_HTTP_CLIENT_REQUEST);
   knownGlobals.push(DTRACE_NET_STREAM_END);
   knownGlobals.push(DTRACE_NET_SERVER_CONNECTION);
-  knownGlobals.push(DTRACE_NET_SOCKET_READ);
-  knownGlobals.push(DTRACE_NET_SOCKET_WRITE);
 }
 
 if (global.COUNTER_NET_SERVER_CONNECTION) {
@@ -145,6 +270,15 @@ if (global.COUNTER_NET_SERVER_CONNECTION) {
   knownGlobals.push(COUNTER_HTTP_SERVER_RESPONSE);
   knownGlobals.push(COUNTER_HTTP_CLIENT_REQUEST);
   knownGlobals.push(COUNTER_HTTP_CLIENT_RESPONSE);
+}
+
+if (global.LTTNG_HTTP_SERVER_RESPONSE) {
+  knownGlobals.push(LTTNG_HTTP_SERVER_RESPONSE);
+  knownGlobals.push(LTTNG_HTTP_SERVER_REQUEST);
+  knownGlobals.push(LTTNG_HTTP_CLIENT_RESPONSE);
+  knownGlobals.push(LTTNG_HTTP_CLIENT_REQUEST);
+  knownGlobals.push(LTTNG_NET_STREAM_END);
+  knownGlobals.push(LTTNG_NET_SERVER_CONNECTION);
 }
 
 if (global.ArrayBuffer) {
@@ -222,7 +356,7 @@ exports.mustCall = function(fn, expected) {
   var context = {
     expected: expected,
     actual: 0,
-    stack: (new Error).stack,
+    stack: (new Error()).stack,
     name: fn.name || '<anonymous>'
   };
 
@@ -243,7 +377,7 @@ exports.checkSpawnSyncRet = function(ret) {
 };
 
 var etcServicesFileName = path.join('/etc', 'services');
-if (process.platform === 'win32') {
+if (exports.isWindows) {
   etcServicesFileName = path.join(process.env.SystemRoot, 'System32', 'drivers',
     'etc', 'services');
 }
@@ -260,11 +394,11 @@ if (process.platform === 'win32') {
  */
 exports.getServiceName = function getServiceName(port, protocol) {
   if (port == null) {
-    throw new Error("Missing port number");
+    throw new Error('Missing port number');
   }
 
   if (typeof protocol !== 'string') {
-    throw new Error("Protocol must be a string");
+    throw new Error('Protocol must be a string');
   }
 
   /*
@@ -275,10 +409,10 @@ exports.getServiceName = function getServiceName(port, protocol) {
 
   try {
     /*
-     * I'm not a big fan of readFileSync, but reading /etc/services asynchronously
-     * here would require implementing a simple line parser, which seems overkill
-     * for a simple utility function that is not running concurrently with any
-     * other one.
+     * I'm not a big fan of readFileSync, but reading /etc/services
+     * asynchronously here would require implementing a simple line parser,
+     * which seems overkill for a simple utility function that is not running
+     * concurrently with any other one.
      */
     var servicesContent = fs.readFileSync(etcServicesFileName,
       { encoding: 'utf8'});
@@ -295,16 +429,8 @@ exports.getServiceName = function getServiceName(port, protocol) {
   }
 
   return serviceName;
-}
+};
 
-exports.isValidHostname = function(str) {
-  // See http://stackoverflow.com/a/3824105
-  var re = new RegExp(
-    '^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])' +
-    '(\\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9]))*$');
-
-  return !!str.match(re) && str.length <= 255;
-}
 exports.hasMultiLocalhost = function hasMultiLocalhost() {
   var TCP = process.binding('tcp_wrap').TCP;
   var t = new TCP();
@@ -313,21 +439,11 @@ exports.hasMultiLocalhost = function hasMultiLocalhost() {
   return ret === 0;
 };
 
-exports.getNodeVersion = function getNodeVersion() {
-  assert(typeof process.version === 'string');
-
-  var matches = process.version.match(/v(\d+).(\d+).(\d+)-?(.*)/);
-  assert(Array.isArray(matches));
-
-  var major = +matches[1];
-  var minor = +matches[2];
-  var patch = +matches[3];
-  var pre = matches[4];
-
-  return {
-    major: major,
-    minor: minor,
-    patch: patch,
-    pre: pre
-  };
-}
+exports.fileExists = function(pathname) {
+  try {
+    fs.accessSync(pathname);
+    return true;
+  } catch (err) {
+    return false;
+  }
+};
