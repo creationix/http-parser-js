@@ -98,4 +98,3 @@ def GuessArchitecture():
 
 def IsWindows():
   return GuessOS() == 'win32'
- 

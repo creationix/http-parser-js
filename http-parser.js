@@ -52,6 +52,10 @@ var methods = HTTPParser.methods = [
   'PROPPATCH',
   'SEARCH',
   'UNLOCK',
+  'BIND',
+  'REBIND',
+  'UNBIND',
+  'ACL',
   'REPORT',
   'MKACTIVITY',
   'CHECKOUT',
@@ -62,7 +66,9 @@ var methods = HTTPParser.methods = [
   'UNSUBSCRIBE',
   'PATCH',
   'PURGE',
-  'MKCALENDAR'
+  'MKCALENDAR',
+  'LINK',
+  'UNLINK'
 ];
 HTTPParser.prototype.reinitialize = HTTPParser;
 HTTPParser.prototype.close =
@@ -80,7 +86,7 @@ HTTPParser.prototype.execute = function (chunk, start, length) {
   if (!(this instanceof HTTPParser)) {
     throw new TypeError('not a HTTPParser');
   }
-  
+
   // backward compat to node < 0.11.4
   // Note: the start and length params were removed in newer version
   start = start || 0;
@@ -276,7 +282,7 @@ HTTPParser.prototype.HEADER = function () {
           break;
       }
     }
-    
+
     info.shouldKeepAlive = this.shouldKeepAlive();
     //problem which also exists in original node: we should know skipBody before calling onHeadersComplete
     var skipBody;
@@ -287,7 +293,7 @@ HTTPParser.prototype.HEADER = function () {
           info.versionMinor, info.headers, info.method, info.url, info.statusCode,
           info.statusMessage, info.upgrade, info.shouldKeepAlive));
     }
-    
+
     if (info.upgrade) {
       this.nextRequest();
       return true;
