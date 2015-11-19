@@ -1,3 +1,4 @@
+/* eslint-disable required-modules */
 'use strict';
 process.binding('http_parser').HTTPParser = require('../http-parser.js').HTTPParser;
 
@@ -7,6 +8,7 @@ var assert = require('assert');
 var os = require('os');
 var child_process = require('child_process');
 
+
 exports.testDir = path.dirname(__filename);
 exports.fixturesDir = path.join(exports.testDir, 'fixtures');
 exports.libDir = path.join(exports.testDir, '../lib');
@@ -14,6 +16,11 @@ exports.tmpDirName = 'tmp';
 exports.PORT = +process.env.NODE_COMMON_PORT || 12346;
 exports.isWindows = process.platform === 'win32';
 exports.isAix = process.platform === 'aix';
+exports.isLinuxPPCBE = (process.platform === 'linux') &&
+                       (process.arch === 'ppc64') &&
+                       (os.endianness() === 'BE');
+exports.isSunOS = process.platform === 'sunos';
+exports.isFreeBSD = process.platform === 'freebsd';
 
 function rimrafSync(p) {
   try {
@@ -32,7 +39,7 @@ function rimrafSync(p) {
     if (e.code === 'ENOENT')
       return;
     if (e.code === 'EPERM')
-      return rmdirSync(p, er);
+      return rmdirSync(p, e);
     if (e.code !== 'EISDIR')
       throw e;
     rmdirSync(p, e);
@@ -132,9 +139,17 @@ Object.defineProperty(exports, 'opensslCli', {get: function() {
   return opensslCli;
 }, enumerable: true });
 
-Object.defineProperty(exports, 'hasCrypto', {get: function() {
-  return process.versions.openssl ? true : false;
-}});
+Object.defineProperty(exports, 'hasCrypto', {
+  get: function() {
+    return process.versions.openssl ? true : false;
+  }
+});
+
+Object.defineProperty(exports, 'hasFipsCrypto', {
+  get: function() {
+    return process.config.variables.openssl_fips ? true : false;
+  }
+});
 
 if (exports.isWindows) {
   exports.PIPE = '\\\\.\\pipe\\libuv-test';
@@ -166,10 +181,6 @@ exports.hasIPv6 = Object.keys(ifaces).some(function(name) {
     return info.family === 'IPv6';
   });
 });
-
-var util = require('util');
-for (var i in util) exports[i] = util[i];
-//for (var i in exports) global[i] = exports[i];
 
 function protoCtrChain(o) {
   var result = [];
@@ -371,11 +382,6 @@ exports.mustCall = function(fn, expected) {
   };
 };
 
-exports.checkSpawnSyncRet = function(ret) {
-  assert.strictEqual(ret.status, 0);
-  assert.strictEqual(ret.error, undefined);
-};
-
 var etcServicesFileName = path.join('/etc', 'services');
 if (exports.isWindows) {
   etcServicesFileName = path.join(process.env.SystemRoot, 'System32', 'drivers',
@@ -408,15 +414,9 @@ exports.getServiceName = function getServiceName(port, protocol) {
   var serviceName = port.toString();
 
   try {
-    /*
-     * I'm not a big fan of readFileSync, but reading /etc/services
-     * asynchronously here would require implementing a simple line parser,
-     * which seems overkill for a simple utility function that is not running
-     * concurrently with any other one.
-     */
     var servicesContent = fs.readFileSync(etcServicesFileName,
       { encoding: 'utf8'});
-    var regexp = util.format('^(\\w+)\\s+\\s%d/%s\\s', port, protocol);
+    var regexp = `^(\\w+)\\s+\\s${port}/${protocol}\\s`;
     var re = new RegExp(regexp, 'm');
 
     var matches = re.exec(servicesContent);
@@ -446,4 +446,8 @@ exports.fileExists = function(pathname) {
   } catch (err) {
     return false;
   }
+};
+
+exports.fail = function(msg) {
+  assert.fail(null, null, msg);
 };

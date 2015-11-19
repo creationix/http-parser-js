@@ -152,4 +152,3 @@ class AddonTestConfiguration(SimpleTestConfiguration):
         result.append(
             SimpleTestCase(test, file_path, arch, mode, self.context, self))
     return result
-    
