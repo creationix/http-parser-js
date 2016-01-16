@@ -108,7 +108,7 @@ HTTPParser.prototype.execute = function (chunk, start, length) {
     return err;
   }
   this.chunk = null;
-  var length = this.offset - start
+  var length = this.offset - start;
   if (headerState[this.state]) {
     this.headerSize += length;
     if (this.headerSize > maxHeaderSize) {
