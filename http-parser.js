@@ -278,7 +278,7 @@ HTTPParser.prototype.HEADER = function () {
           this.connection += headers[i + 1].toLowerCase();
           break;
         case 'upgrade':
-          info.upgrade = true;
+          info.upgrade = !/h2/.test(headers[i + 1].toLowerCase());
           break;
       }
     }
