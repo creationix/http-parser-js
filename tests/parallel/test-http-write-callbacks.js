@@ -1,5 +1,5 @@
 'use strict';
-var common = require('../common');
+require('../common');
 var assert = require('assert');
 
 var http = require('http');
@@ -36,7 +36,7 @@ server.on('checkContinue', function(req, res) {
         assert.ifError(er);
         res.write('foo', 'ascii', function(er) {
           assert.ifError(er);
-          res.end(new Buffer('bar'), 'buffer', function(er) {
+          res.end(Buffer.from('bar'), 'buffer', function(er) {
             serverEndCb = true;
           });
         });
@@ -50,9 +50,9 @@ server.on('checkContinue', function(req, res) {
   });
 });
 
-server.listen(common.PORT, function() {
+server.listen(0, function() {
   var req = http.request({
-    port: common.PORT,
+    port: this.address().port,
     method: 'PUT',
     headers: { 'expect': '100-continue' }
   });
@@ -60,7 +60,7 @@ server.listen(common.PORT, function() {
     // ok, good to go.
     req.write('YmF6', 'base64', function(er) {
       assert.ifError(er);
-      req.write(new Buffer('quux'), function(er) {
+      req.write(Buffer.from('quux'), function(er) {
         assert.ifError(er);
         req.end('626c657267', 'hex', function(er) {
           assert.ifError(er);

@@ -1,11 +1,11 @@
 'use strict';
-var common = require('../common');
-var assert = require('assert');
-var http = require('http');
+require('../common');
+const assert = require('assert');
+const http = require('http');
 
 var clientAborts = 0;
 
-var server = http.Server(function(req, res) {
+const server = http.Server(function(req, res) {
   console.log('Got connection');
   res.writeHead(200);
   res.write('Working on it...');
@@ -21,24 +21,18 @@ var server = http.Server(function(req, res) {
       server.close();
     }
   });
-
-  // since there is already clientError, maybe that would be appropriate,
-  // since "error" is magical
-  req.on('clientError', function() {
-    console.log('Got clientError');
-  });
 });
 
 var responses = 0;
-var N = 16;
-var requests = [];
+const N = 8;
+const requests = [];
 
-server.listen(common.PORT, function() {
+server.listen(0, function() {
   console.log('Server listening.');
 
   for (var i = 0; i < N; i++) {
     console.log('Making client ' + i);
-    var options = { port: common.PORT, path: '/?id=' + i };
+    var options = { port: this.address().port, path: '/?id=' + i };
     var req = http.get(options, function(res) {
       console.log('Client response code ' + res.statusCode);
 
