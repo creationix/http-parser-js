@@ -1,5 +1,5 @@
 'use strict';
-var common = require('../common');
+require('../common');
 var assert = require('assert');
 var http = require('http');
 
@@ -13,8 +13,8 @@ function handler(req, res) {
   assert.equal(sent_continue, true, 'Full response sent before 100 Continue');
   console.error('Server sending full response...');
   res.writeHead(200, {
-    'Content-Type' : 'text/plain',
-    'ABCD' : '1'
+    'Content-Type': 'text/plain',
+    'ABCD': '1'
   });
   res.end(test_res_body);
 }
@@ -28,12 +28,12 @@ server.on('checkContinue', function(req, res) {
     handler(req, res);
   }, 100);
 });
-server.listen(common.PORT);
+server.listen(0);
 
 
 server.on('listening', function() {
   var req = http.request({
-    port: common.PORT,
+    port: this.address().port,
     method: 'POST',
     path: '/world',
     headers: { 'Expect': '100-continue' }

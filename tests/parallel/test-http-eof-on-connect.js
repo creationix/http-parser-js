@@ -1,6 +1,5 @@
 'use strict';
-var common = require('../common');
-var assert = require('assert');
+require('../common');
 var net = require('net');
 var http = require('http');
 
@@ -9,10 +8,10 @@ var http = require('http');
 // reproduceable on the first packet on the first connection to a server.
 
 var server = http.createServer(function(req, res) {});
-server.listen(common.PORT);
+server.listen(0);
 
 server.on('listening', function() {
-  net.createConnection(common.PORT).on('connect', function() {
+  net.createConnection(this.address().port).on('connect', function() {
     this.destroy();
   }).on('close', function() {
     server.close();

@@ -1,13 +1,12 @@
 'use strict';
-var common = require('../common');
+require('../common');
 var assert = require('assert');
 var http = require('http');
-var util = require('util');
 
 var bufferSize = 5 * 1024 * 1024;
 var measuredSize = 0;
 
-var buffer = Buffer(bufferSize);
+var buffer = Buffer.allocUnsafe(bufferSize);
 for (var i = 0; i < buffer.length; i++) {
   buffer[i] = i % 256;
 }
@@ -45,11 +44,11 @@ var web = http.Server(function(req, res) {
 
 var gotThanks = false;
 
-web.listen(common.PORT, function() {
+web.listen(0, function() {
   console.log('Making request');
 
   var req = http.request({
-    port: common.PORT,
+    port: this.address().port,
     method: 'GET',
     path: '/',
     headers: { 'content-length': buffer.length }

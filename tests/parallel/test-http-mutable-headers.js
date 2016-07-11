@@ -1,5 +1,5 @@
 'use strict';
-var common = require('../common');
+require('../common');
 var assert = require('assert');
 var http = require('http');
 
@@ -61,7 +61,7 @@ var s = http.createServer(function(req, res) {
   res.end(content);
 });
 
-s.listen(common.PORT, nextTest);
+s.listen(0, nextTest);
 
 
 function nextTest() {
@@ -71,7 +71,7 @@ function nextTest() {
 
   var bufferedResponse = '';
 
-  http.get({ port: common.PORT }, function(response) {
+  http.get({ port: s.address().port }, function(response) {
     console.log('TEST: ' + test);
     console.log('STATUS: ' + response.statusCode);
     console.log('HEADERS: ');
@@ -84,8 +84,8 @@ function nextTest() {
                      'testing');
         assert.equal(response.headers['x-test-array-header'],
                      [1, 2, 3].join(', '));
-        assert.deepEqual(cookies,
-                         response.headers['set-cookie']);
+        assert.deepStrictEqual(cookies,
+                               response.headers['set-cookie']);
         assert.equal(response.headers['x-test-header2'] !== undefined, false);
         // Make the next request
         test = 'contentLength';

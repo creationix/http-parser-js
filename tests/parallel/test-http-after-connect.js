@@ -1,5 +1,5 @@
 'use strict';
-var common = require('../common');
+require('../common');
 var assert = require('assert');
 var http = require('http');
 
@@ -26,9 +26,9 @@ server.on('connect', function(req, socket, firstBodyChunk) {
     socket.end();
   });
 });
-server.listen(common.PORT, function() {
+server.listen(0, function() {
   var req = http.request({
-    port: common.PORT,
+    port: this.address().port,
     method: 'CONNECT',
     path: 'google.com:80'
   });
@@ -45,8 +45,8 @@ server.listen(common.PORT, function() {
 });
 
 function doRequest(i) {
-  var req = http.get({
-    port: common.PORT,
+  http.get({
+    port: server.address().port,
     path: '/request' + i
   }, function(res) {
     console.error('Client got GET response');

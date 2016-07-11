@@ -1,8 +1,7 @@
 'use strict';
-var common = require('../common');
+require('../common');
 var assert = require('assert');
 var http = require('http');
-var net = require('net');
 
 var request = 0;
 var response = 0;
@@ -14,7 +13,7 @@ process.on('exit', function() {
 var server = http.createServer(function(req, res) {
   request++;
   res.end();
-}).listen(common.PORT, function() {
+}).listen(0, function() {
   var options = {
     agent: null,
     port: this.address().port

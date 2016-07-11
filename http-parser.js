@@ -18,6 +18,7 @@ function HTTPParser(type) {
   this.headerSize = 0; // for preventing too big headers
   this.body_bytes = null;
   this.isUserCall = false;
+  this.hadError = false;
 }
 HTTPParser.REQUEST = 'REQUEST';
 HTTPParser.RESPONSE = 'RESPONSE';
@@ -35,7 +36,7 @@ Object.defineProperty(HTTPParser, 'kOnExecute', {
     }
   });
 
-var methods = HTTPParser.methods = [
+var methods = exports.methods = HTTPParser.methods = [
   'DELETE',
   'GET',
   'HEAD',
@@ -105,10 +106,11 @@ HTTPParser.prototype.execute = function (chunk, start, length) {
     if (this.isUserCall) {
       throw err;
     }
+    this.hadError = true;
     return err;
   }
   this.chunk = null;
-  var length = this.offset - start;
+  length = this.offset - start;
   if (headerState[this.state]) {
     this.headerSize += length;
     if (this.headerSize > maxHeaderSize) {
@@ -124,6 +126,9 @@ var stateFinishAllowed = {
   BODY_RAW: true
 };
 HTTPParser.prototype.finish = function () {
+  if (this.hadError) {
+    return;
+  }
   if (!stateFinishAllowed[this.state]) {
     return new Error('invalid state for EOF');
   }
@@ -177,6 +182,10 @@ HTTPParser.prototype.consumeLine = function () {
 var headerExp = /^([^: \t]+):[ \t]*((?:.*[^ \t])|)/;
 var headerContinueExp = /^[ \t]+(.*[^ \t])/;
 HTTPParser.prototype.parseHeader = function (line, headers) {
+  if (line.indexOf('\r') !== -1) {
+    throw parseErrorCode('HPE_LF_EXPECTED');
+  }
+
   var match = headerExp.exec(line);
   var k = match && match[1];
   if (k) { // skip empty string (malformed header)
@@ -201,9 +210,7 @@ HTTPParser.prototype.REQUEST_LINE = function () {
   }
   var match = requestExp.exec(line);
   if (match === null) {
-    var err = new Error('Parse Error');
-    err.code = 'HPE_INVALID_CONSTANT';
-    throw err;
+    throw parseErrorCode('HPE_INVALID_CONSTANT');
   }
   this.info.method = this._compatMode0_11 ? match[1] : methods.indexOf(match[1]);
   if (this.info.method === -1) {
@@ -227,9 +234,7 @@ HTTPParser.prototype.RESPONSE_LINE = function () {
   }
   var match = responseExp.exec(line);
   if (match === null) {
-    var err = new Error('Parse Error');
-    err.code = 'HPE_INVALID_CONSTANT';
-    throw err;
+    throw parseErrorCode('HPE_INVALID_CONSTANT');
   }
   this.info.versionMajor = +match[1];
   this.info.versionMinor = +match[2];
@@ -266,12 +271,17 @@ HTTPParser.prototype.HEADER = function () {
     this.parseHeader(line, info.headers);
   } else {
     var headers = info.headers;
+    var hasContentLength = false;
     for (var i = 0; i < headers.length; i += 2) {
       switch (headers[i].toLowerCase()) {
         case 'transfer-encoding':
           this.isChunked = headers[i + 1].toLowerCase() === 'chunked';
           break;
         case 'content-length':
+          if (hasContentLength) {
+            throw parseErrorCode('HPE_UNEXPECTED_CONTENT_LENGTH');
+          }
+          hasContentLength = true;
           this.body_bytes = +headers[i + 1];
           break;
         case 'connection':
@@ -281,6 +291,10 @@ HTTPParser.prototype.HEADER = function () {
           info.upgrade = true;
           break;
       }
+    }
+
+    if (this.isChunked && hasContentLength) {
+      throw parseErrorCode('HPE_UNEXPECTED_CONTENT_LENGTH');
     }
 
     info.shouldKeepAlive = this.shouldKeepAlive();
@@ -293,8 +307,7 @@ HTTPParser.prototype.HEADER = function () {
           info.versionMinor, info.headers, info.method, info.url, info.statusCode,
           info.statusMessage, info.upgrade, info.shouldKeepAlive));
     }
-
-    if (info.upgrade) {
+    if (info.upgrade || skipBody === 2) {
       this.nextRequest();
       return true;
     } else if (this.isChunked && !skipBody) {
@@ -386,3 +399,9 @@ HTTPParser.prototype.BODY_SIZED = function () {
     }
   });
 });
+
+function parseErrorCode(code) {
+  var err = new Error('Parse Error');
+  err.code = code;
+  return err;
+}
