@@ -7,10 +7,7 @@ var exec = require('child_process').exec;
 
 var bodyLength = 12345;
 
-var body = '';
-for (var i = 0; i < bodyLength; i++) {
-  body += 'c';
-}
+var body = 'c'.repeat(bodyLength);
 
 var server = http.createServer(function(req, res) {
   res.writeHead(200, {
@@ -23,11 +20,11 @@ var server = http.createServer(function(req, res) {
 var runs = 0;
 
 function runAb(opts, callback) {
-  var command = 'ab ' + opts + ' http://127.0.0.1:' + common.PORT + '/';
+  var command = `ab ${opts} http://127.0.0.1:${server.address().port}/`;
   exec(command, function(err, stdout, stderr) {
     if (err) {
       if (/ab|apr/mi.test(stderr)) {
-        console.log('1..0 # Skipped: problem spawning `ab`.\n' + stderr);
+        common.skip('problem spawning `ab`.\n' + stderr);
         process.reallyExit(0);
       }
       process.exit();
@@ -37,10 +34,10 @@ function runAb(opts, callback) {
     var m = /Document Length:\s*(\d+) bytes/mi.exec(stdout);
     var documentLength = parseInt(m[1]);
 
-    var m = /Complete requests:\s*(\d+)/mi.exec(stdout);
+    m = /Complete requests:\s*(\d+)/mi.exec(stdout);
     var completeRequests = parseInt(m[1]);
 
-    var m = /HTML transferred:\s*(\d+) bytes/mi.exec(stdout);
+    m = /HTML transferred:\s*(\d+) bytes/mi.exec(stdout);
     var htmlTransfered = parseInt(m[1]);
 
     assert.equal(bodyLength, documentLength);
@@ -52,7 +49,7 @@ function runAb(opts, callback) {
   });
 }
 
-server.listen(common.PORT, function() {
+server.listen(0, function() {
   runAb('-c 1 -n 10', function() {
     console.log('-c 1 -n 10 okay');
 

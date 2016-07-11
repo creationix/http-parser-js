@@ -1,5 +1,5 @@
 'use strict';
-var common = require('../common');
+require('../common');
 var assert = require('assert');
 var http = require('http');
 
@@ -11,7 +11,7 @@ var server = http.createServer(function(req, res) {
     // write should accept string
     res.write('string');
     // write should accept buffer
-    res.write(new Buffer('asdf'));
+    res.write(Buffer.from('asdf'));
 
     // write should not accept an Array
     assert.throws(function() {
@@ -27,18 +27,18 @@ var server = http.createServer(function(req, res) {
     res.end('string');
   } else if (test === 2) {
     // end should accept Buffer
-    res.end(new Buffer('asdf'));
+    res.end(Buffer.from('asdf'));
   }
 });
 
-server.listen(common.PORT, function() {
+server.listen(0, function() {
   // just make a request, other tests handle responses
-  http.get({port: common.PORT}, function(res) {
+  http.get({port: this.address().port}, function(res) {
     res.resume();
     // lazy serial test, because we can only call end once per request
     test += 1;
     // do it again to test .end(Buffer);
-    http.get({port: common.PORT}, function(res) {
+    http.get({port: server.address().port}, function(res) {
       res.resume();
       server.close();
     });

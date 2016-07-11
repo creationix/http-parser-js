@@ -1,5 +1,5 @@
 'use strict';
-var common = require('../common');
+require('../common');
 var assert = require('assert');
 var http = require('http');
 
@@ -8,16 +8,16 @@ var requests_sent = 0;
 var requests_done = 0;
 var options = {
   method: 'GET',
-  port: common.PORT,
+  port: undefined,
   host: '127.0.0.1',
 };
 
 //http.globalAgent.maxSockets = 15;
 
 var server = http.createServer(function(req, res) {
-  var m = /\/(.*)/.exec(req.url),
-      reqid = parseInt(m[1], 10);
-  if ( reqid % 2 ) {
+  const m = /\/(.*)/.exec(req.url);
+  const reqid = parseInt(m[1], 10);
+  if (reqid % 2) {
     // do not reply the request
   } else {
     res.writeHead(200, {'Content-Type': 'text/plain'});
@@ -27,7 +27,8 @@ var server = http.createServer(function(req, res) {
   request_number += 1;
 });
 
-server.listen(options.port, options.host, function() {
+server.listen(0, options.host, function() {
+  options.port = this.address().port;
   var req;
 
   for (requests_sent = 0; requests_sent < 30; requests_sent += 1) {

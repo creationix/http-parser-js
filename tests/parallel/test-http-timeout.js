@@ -1,10 +1,7 @@
 'use strict';
-var common = require('../common');
-var assert = require('assert');
+require('../common');
 
 var http = require('http');
-
-var port = common.PORT;
 
 var server = http.createServer(function(req, res) {
   res.writeHead(200, {'Content-Type': 'text/plain'});
@@ -13,7 +10,7 @@ var server = http.createServer(function(req, res) {
 
 var agent = new http.Agent({maxSockets: 1});
 
-server.listen(port, function() {
+server.listen(0, function() {
 
   for (var i = 0; i < 11; ++i) {
     createRequest().end();
@@ -24,20 +21,22 @@ server.listen(port, function() {
   var count = 0;
 
   function createRequest() {
-    var req = http.request({port: port, path: '/', agent: agent},
-                           function(res) {
-      req.clearTimeout(callback);
+    const req = http.request(
+      {port: server.address().port, path: '/', agent: agent},
+      function(res) {
+        req.clearTimeout(callback);
 
-      res.on('end', function() {
-        count++;
+        res.on('end', function() {
+          count++;
 
-        if (count == 11) {
-          server.close();
-        }
-      });
+          if (count == 11) {
+            server.close();
+          }
+        });
 
-      res.resume();
-    });
+        res.resume();
+      }
+    );
 
     req.setTimeout(1000, callback);
     return req;

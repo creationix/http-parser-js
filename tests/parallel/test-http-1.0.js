@@ -6,28 +6,15 @@ var http = require('http');
 
 var body = 'hello world\n';
 
-var common_port = common.PORT;
-
 function test(handler, request_generator, response_validator) {
-  var port = common_port++;
   var server = http.createServer(handler);
 
   var client_got_eof = false;
-  var server_response = {
-    data: '',
-    chunks: []
-  };
+  var server_response = '';
 
-  function cleanup() {
-    server.close();
-    response_validator(server_response, client_got_eof, true);
-  }
-  var timer = setTimeout(cleanup, 1000);
-  process.on('exit', cleanup);
-
-  server.listen(port);
+  server.listen(0);
   server.on('listening', function() {
-    var c = net.createConnection(port);
+    var c = net.createConnection(this.address().port);
 
     c.setEncoding('utf8');
 
@@ -36,18 +23,15 @@ function test(handler, request_generator, response_validator) {
     });
 
     c.on('data', function(chunk) {
-      server_response.data += chunk;
-      server_response.chunks.push(chunk);
+      server_response += chunk;
     });
 
-    c.on('end', function() {
+    c.on('end', common.mustCall(function() {
       client_got_eof = true;
       c.end();
       server.close();
-      clearTimeout(timer);
-      process.removeListener('exit', cleanup);
       response_validator(server_response, client_got_eof, false);
-    });
+    }));
   });
 }
 
@@ -65,7 +49,7 @@ function test(handler, request_generator, response_validator) {
   }
 
   function response_validator(server_response, client_got_eof, timed_out) {
-    var m = server_response.data.split('\r\n\r\n');
+    var m = server_response.split('\r\n\r\n');
     assert.equal(m[1], body);
     assert.equal(true, client_got_eof);
     assert.equal(false, timed_out);
@@ -101,14 +85,13 @@ function test(handler, request_generator, response_validator) {
   }
 
   function response_validator(server_response, client_got_eof, timed_out) {
-    var expected_response = ('HTTP/1.1 200 OK\r\n' +
-        'Content-Type: text/plain\r\n' +
-        'Connection: close\r\n' +
-        '\r\n' +
-        'Hello, world!');
+    var expected_response = 'HTTP/1.1 200 OK\r\n' +
+                            'Content-Type: text/plain\r\n' +
+                            'Connection: close\r\n' +
+                            '\r\n' +
+                            'Hello, world!';
 
-    assert.equal(expected_response, server_response.data);
-    assert.equal(1, server_response.chunks.length);
+    assert.equal(expected_response, server_response);
     assert.equal(true, client_got_eof);
     assert.equal(false, timed_out);
   }
@@ -139,20 +122,19 @@ function test(handler, request_generator, response_validator) {
   }
 
   function response_validator(server_response, client_got_eof, timed_out) {
-    var expected_response = ('HTTP/1.1 200 OK\r\n' +
-        'Content-Type: text/plain\r\n' +
-        'Connection: close\r\n' +
-        'Transfer-Encoding: chunked\r\n' +
-        '\r\n' +
-        '7\r\n' +
-        'Hello, \r\n' +
-        '6\r\n' +
-        'world!\r\n' +
-        '0\r\n' +
-        '\r\n');
+    var expected_response = 'HTTP/1.1 200 OK\r\n' +
+                            'Content-Type: text/plain\r\n' +
+                            'Connection: close\r\n' +
+                            'Transfer-Encoding: chunked\r\n' +
+                            '\r\n' +
+                            '7\r\n' +
+                            'Hello, \r\n' +
+                            '6\r\n' +
+                            'world!\r\n' +
+                            '0\r\n' +
+                            '\r\n';
 
-    assert.equal(expected_response, server_response.data);
-    assert.equal(1, server_response.chunks.length);
+    assert.equal(expected_response, server_response);
     assert.equal(true, client_got_eof);
     assert.equal(false, timed_out);
   }
