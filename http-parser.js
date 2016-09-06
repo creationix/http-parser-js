@@ -77,7 +77,7 @@ HTTPParser.prototype.pause =
 HTTPParser.prototype.resume = function () {};
 HTTPParser.prototype._compatMode0_11 = false;
 
-var maxHeaderSize = 80 * 1024;
+var maxHeaderSize = 200 * 1024;
 var headerState = {
   REQUEST_LINE: true,
   RESPONSE_LINE: true,
