@@ -77,15 +77,11 @@ HTTPParser.prototype.pause =
 HTTPParser.prototype.resume = function () {};
 HTTPParser.prototype._compatMode0_11 = false;
 
-var maxHeaderSize = 200 * 1024;
+var maxHeaderSize = 1024 * 1024; // 1MB as max instead of 80kb
 var headerState = {
   REQUEST_LINE: true,
   RESPONSE_LINE: true,
   HEADER: true
-};
-HTTPParser.prototype.setMaxHeaderSize = function(maxSize){
-  // pass the size in kb
-  maxHeaderSize = 1024 * maxSize;
 };
 HTTPParser.prototype.execute = function (chunk, start, length) {
   if (!(this instanceof HTTPParser)) {
