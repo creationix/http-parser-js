@@ -83,6 +83,10 @@ var headerState = {
   RESPONSE_LINE: true,
   HEADER: true
 };
+HTTPParser.prototype.setMaxHeaderSize = function(maxSize){
+  // pass the size in kb
+  maxHeaderSize = 1024 * maxSize;
+}
 HTTPParser.prototype.execute = function (chunk, start, length) {
   if (!(this instanceof HTTPParser)) {
     throw new TypeError('not a HTTPParser');
