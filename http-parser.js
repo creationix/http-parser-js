@@ -20,6 +20,7 @@ function HTTPParser(type) {
   this.isUserCall = false;
   this.hadError = false;
 }
+HTTPParser.maxHeaderSize = 80 * 1024; // maxHeaderSize (in bytes) is configurable, but 80kb by default;
 HTTPParser.REQUEST = 'REQUEST';
 HTTPParser.RESPONSE = 'RESPONSE';
 var kOnHeaders = HTTPParser.kOnHeaders = 0;
@@ -77,7 +78,6 @@ HTTPParser.prototype.pause =
 HTTPParser.prototype.resume = function () {};
 HTTPParser.prototype._compatMode0_11 = false;
 
-var maxHeaderSize = 1024 * 1024; // 1MB as max instead of 80kb
 var headerState = {
   REQUEST_LINE: true,
   RESPONSE_LINE: true,
@@ -113,7 +113,7 @@ HTTPParser.prototype.execute = function (chunk, start, length) {
   length = this.offset - start;
   if (headerState[this.state]) {
     this.headerSize += length;
-    if (this.headerSize > maxHeaderSize) {
+    if (this.headerSize > HTTPParser.maxHeaderSize) {
       return new Error('max header size exceeded');
     }
   }
