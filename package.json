@@ -1,6 +1,6 @@
 {
   "name": "http-parser-js",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "A pure JS HTTP parser for node.",
   "main": "http-parser.js",
   "scripts": {
@@ -18,7 +18,8 @@
   "contributors": [
     "Jimb Esser (https://github.com/Jimbly)",
     "Lawrence Rowe (https://github.com/lrowe)",
-    "Jan SchÃ¤r (https://github.com/jscissr)"
+    "Jan Schär (https://github.com/jscissr)",
+    "Paul Rütter (https://github.com/paulrutter)"
   ],
   "license": "MIT"
 }
