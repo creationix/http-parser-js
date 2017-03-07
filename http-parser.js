@@ -293,6 +293,15 @@ HTTPParser.prototype.HEADER = function () {
       }
     }
 
+    // The client made non-upgrade request, and server is just advertising
+    // supported protocols.
+    //
+    // See RFC7230 Section 6.7
+    if (info.upgrade && info.method === undefined &&
+        !/(^|\W)upgrade(\W|$)/i.test(this.connection)) {
+      info.upgrade = false;
+    }
+
     if (this.isChunked && hasContentLength) {
       throw parseErrorCode('HPE_UNEXPECTED_CONTENT_LENGTH');
     }
