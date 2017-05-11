@@ -28,6 +28,12 @@ var kOnHeadersComplete = HTTPParser.kOnHeadersComplete = 1;
 var kOnBody = HTTPParser.kOnBody = 2;
 var kOnMessageComplete = HTTPParser.kOnMessageComplete = 3;
 
+// Some handler stubs, needed for compatibility
+HTTPParser.prototype[kOnHeaders] =
+HTTPParser.prototype[kOnHeadersComplete] =
+HTTPParser.prototype[kOnBody] =
+HTTPParser.prototype[kOnMessageComplete] = function () {};
+
 var compatMode0_12 = true;
 Object.defineProperty(HTTPParser, 'kOnExecute', {
     get: function () {
