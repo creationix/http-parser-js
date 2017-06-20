@@ -83,6 +83,7 @@ HTTPParser.prototype.close =
 HTTPParser.prototype.pause =
 HTTPParser.prototype.resume = function () {};
 HTTPParser.prototype._compatMode0_11 = false;
+HTTPParser.prototype.getAsyncId = function() { return false; };
 
 var headerState = {
   REQUEST_LINE: true,
