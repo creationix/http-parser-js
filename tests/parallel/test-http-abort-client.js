@@ -3,12 +3,12 @@ require('../common');
 var http = require('http');
 var assert = require('assert');
 
+let serverRes;
 var server = http.Server(function(req, res) {
   console.log('Server accepted request.');
+  serverRes = res;
   res.writeHead(200);
   res.write('Part of my res.');
-
-  res.destroy();
 });
 
 var responseClose = false;
@@ -19,6 +19,7 @@ server.listen(0, function() {
     headers: { connection: 'keep-alive' }
   }, function(res) {
     server.close();
+    serverRes.destroy();
 
     console.log('Got res: ' + res.statusCode);
     console.dir(res.headers);
