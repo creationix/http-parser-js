@@ -411,8 +411,14 @@ exports.mustCall = function(fn, expected) {
 };
 
 exports.hasMultiLocalhost = function hasMultiLocalhost() {
+  var TCPConstants =  process.binding('tcp_wrap').constants;
   var TCP = process.binding('tcp_wrap').TCP;
-  var t = new TCP();
+  var t;
+  if (TCPConstants && TCPConstants.SERVER) {
+    t = new TCP(TCPConstants.SERVER);
+  } else {
+    t = new TCP();
+  }
   var ret = t.bind('127.0.0.2', exports.PORT);
   t.close();
   return ret === 0;
