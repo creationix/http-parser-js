@@ -341,6 +341,8 @@ HTTPParser.prototype.HEADER = function () {
       this.state = 'BODY_CHUNKHEAD';
     } else if (skipBody || this.body_bytes === 0) {
       this.nextRequest();
+      // For older versions of node (v6.x and older?), that return skipBody=1 or skipBody=true,
+      //   need this "return true;" if it's an upgrade request.
       return info.upgrade;
     } else if (this.body_bytes === null) {
       this.state = 'BODY_RAW';
