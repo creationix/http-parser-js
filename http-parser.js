@@ -334,7 +334,8 @@ HTTPParser.prototype.HEADER = function () {
           info.versionMinor, info.headers, info.method, info.url, info.statusCode,
           info.statusMessage, info.upgrade, info.shouldKeepAlive));
     }
-    if (skipBody === 2) { // May also need || compatMode0_12 && info.upgrade?  Probably too old to matter now
+    // Were there other version between 0.12 and when skipBody==2 logic was added?
+    if (skipBody === 2 || (this._compatMode0_11 || compatMode0_12) && info.upgrade) {
       this.nextRequest();
       return true;
     } else if (this.isChunked && !skipBody) {
@@ -422,6 +423,7 @@ HTTPParser.prototype.BODY_SIZED = function () {
     set: function (to) {
       // hack for backward compatibility
       this._compatMode0_11 = true;
+      method_connect = 'CONNECT';
       return (this[k] = to);
     }
   });
