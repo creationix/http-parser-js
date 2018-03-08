@@ -1,6 +1,6 @@
 {
   "name": "http-parser-js",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "description": "A pure JS HTTP parser for node.",
   "main": "http-parser.js",
   "scripts": {
