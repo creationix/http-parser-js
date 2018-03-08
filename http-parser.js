@@ -334,14 +334,14 @@ HTTPParser.prototype.HEADER = function () {
           info.versionMinor, info.headers, info.method, info.url, info.statusCode,
           info.statusMessage, info.upgrade, info.shouldKeepAlive));
     }
-    // Were there other version between 0.12 and when skipBody==2 logic was added?
-    if (skipBody === 2 || (this._compatMode0_11 || compatMode0_12) && info.upgrade) {
+    if (skipBody === 2) {
       this.nextRequest();
       return true;
     } else if (this.isChunked && !skipBody) {
       this.state = 'BODY_CHUNKHEAD';
     } else if (skipBody || this.body_bytes === 0) {
       this.nextRequest();
+      return info.upgrade;
     } else if (this.body_bytes === null) {
       this.state = 'BODY_RAW';
     } else {
