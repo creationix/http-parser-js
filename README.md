@@ -9,8 +9,13 @@ Jan Schär (jscissr) made some bigger changes and added tests. This fixed some b
 This is packaged as a standalone npm module.  To use in node, monkeypatch HTTPParser.
 
 ```js
+var opts = {
+  // skips the check for chunked content plus content length headers, which is invalid but sent by some servers
+  skipStreamPlusContentLengthCheck: false,
+};
+
 // Monkey patch before you require http for the first time.
-process.binding('http_parser').HTTPParser = require('http-parser-js').HTTPParser;
+process.binding('http_parser').HTTPParser = require('http-parser-js').HTTPParser(opts);
 
 var http = require('http');
 // ...
