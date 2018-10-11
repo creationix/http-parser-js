@@ -10,7 +10,7 @@ var server = http.Server(function(req, res) {
 server.listen(0, function() {
   var req = http.get({port: this.address().port}, function(res) {
     res.on('end', function() {
-      assert.ok(req.end());
+      assert.ok(process.version.startsWith("v10.") ? req.end() : !req.end());
       server.close();
     });
     res.resume();
