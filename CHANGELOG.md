@@ -1,5 +1,9 @@
 # HTTP Parser
 
+## 0.5.0
+
+Add Node.js 10.x support.
+
 ## 0.4.4
 
 Made 'maxHeaderSize' configurable.
