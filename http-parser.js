@@ -312,10 +312,11 @@ HTTPParser.prototype.HEADER = function () {
     }
 
     // See https://github.com/creationix/http-parser-js/pull/53
-    // if both isChunked and hasContentLength, content length wins
-    // because it has been verified to match the body length already
+    // if both isChunked and hasContentLength, chunk wins
+    // Because Content-Length is the length of all chunk, when both isChunked and hasContentLength.
+    // The behavior is the same as chromium.
     if (this.isChunked && hasContentLength) {
-      this.isChunked = false;
+      this.hasContentLength = false;
     }
 
     // Logic from https://github.com/nodejs/http-parser/blob/921d5585515a153fa00e411cf144280c59b41f90/http_parser.c#L1727-L1737
