@@ -2,14 +2,11 @@
 
 var assert = require('assert');
 
-var nodeVersion = process.version;
-var isNode10 = nodeVersion.startsWith("v10.");
-
 exports.HTTPParser = HTTPParser;
 function HTTPParser(type) {
   assert.ok(type === HTTPParser.REQUEST || type === HTTPParser.RESPONSE);
   this.type = type;
-  this.state = (isNode10 ? type === HTTPParser.REQUEST ? "REQUEST" : "RESPONSE" : type) + '_LINE';
+  this.state = type + '_LINE';
   this.info = {
     headers: [],
     upgrade: false
@@ -23,11 +20,10 @@ function HTTPParser(type) {
   this.isUserCall = false;
   this.hadError = false;
 }
-
 HTTPParser.encoding = 'ascii';
 HTTPParser.maxHeaderSize = 80 * 1024; // maxHeaderSize (in bytes) is configurable, but 80kb by default;
-HTTPParser.REQUEST = isNode10 ? 0 : 'REQUEST';
-HTTPParser.RESPONSE = isNode10 ? 1 : 'RESPONSE';
+HTTPParser.REQUEST = 'REQUEST';
+HTTPParser.RESPONSE = 'RESPONSE';
 var kOnHeaders = HTTPParser.kOnHeaders = 0;
 var kOnHeadersComplete = HTTPParser.kOnHeadersComplete = 1;
 var kOnBody = HTTPParser.kOnBody = 2;
