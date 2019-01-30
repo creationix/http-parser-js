@@ -2,7 +2,7 @@
 
 ## 0.5.0
 
-Add Node.js 10.x support.
+Add TravisCI Nodejs 10.
 
 ## 0.4.4
 
