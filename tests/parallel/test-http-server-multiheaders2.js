@@ -54,7 +54,7 @@ var srv = http.createServer(function(req, res) {
                  'foo', 'header parsed incorrectly: ' + header);
   });
   multipleAllowed.forEach(function(header) {
-    const sep = (parseInt(process.versions.node[0] + "" + process.versions.node[1]) < 8) ? ', ' : (header.toLowerCase() === 'cookie' ? '; ' : ', ');
+    const sep = (process.version < 'v8.0') ? ', ' : (header.toLowerCase() === 'cookie' ? '; ' : ', ');
     assert.strictEqual(req.headers[header.toLowerCase()], `foo${sep}bar`,
                        `header parsed incorrectly: ${header}`);
   });

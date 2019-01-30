@@ -46,7 +46,7 @@ server.listen(common.PIPE, function() {
       server.close(function(error) {
         assert.equal(error, undefined);
         server.close(function(error) {
-          assert.equal(error && error.message, process.version.startsWith("v10.") ? "Server is not running." : 'Not running');
+          assert.equal(error && error.message, 'Not running');
         });
       });
     });
