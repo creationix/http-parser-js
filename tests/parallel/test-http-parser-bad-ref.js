@@ -24,7 +24,7 @@ function flushPool() {
 function demoBug(part1, part2) {
   flushPool();
 
-  var parser = new HTTPParser(process.version.startsWith("v10.") ? 0 : 'REQUEST');
+  var parser = new HTTPParser(0);
 
   parser.headers = [];
   parser.url = '';
