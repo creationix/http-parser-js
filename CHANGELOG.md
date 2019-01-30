@@ -1,8 +1,9 @@
 # HTTP Parser
 
-## 0.5.0
+## 0.5.1
 
-Add TravisCI Nodejs 10.
+Add TravisCI Nodejs 10 and 8.
+Improved/fixed unit tests for running on Node.js 10.
 
 ## 0.4.4
 
