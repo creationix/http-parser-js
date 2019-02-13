@@ -10,7 +10,11 @@ var server = http.Server(function(req, res) {
 server.listen(0, function() {
   var req = http.get({port: this.address().port}, function(res) {
     res.on('end', function() {
-      assert.ok(!req.end());
+    	if (parseInt(process.versions.node) < 10) {
+    		assert.ok(!req.end());
+    	} else {
+    		assert.equal(req.end(), req);
+    	}
       server.close();
     });
     res.resume();

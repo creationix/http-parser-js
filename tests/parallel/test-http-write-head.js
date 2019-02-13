@@ -25,7 +25,7 @@ var s = http.createServer(function(req, res) {
     res.setHeader('foo', undefined);
   } catch (e) {
     assert.ok(e instanceof Error);
-    assert.ok(e.message.indexOf('"value"') != -1);
+    assert.ok(e.message.indexOf('value') != -1);
     threw = true;
   }
   assert.ok(threw, 'Undefined value should throw');

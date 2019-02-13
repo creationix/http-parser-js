@@ -11,7 +11,7 @@ function test(host) {
     [http, https].forEach((module) => {
       assert.throws(() => module[method](host, () => {
         throw new Error(`${module}.${method} should not connect to ${host}`);
-      }), error);
+      }), `${error} ${host}`);
     });
   });
 }

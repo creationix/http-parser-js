@@ -112,6 +112,9 @@ function test_upgrade_no_listener() {
              'Connection: Upgrade\r\n' +
              '\r\n');
   });
+  
+  conn.on('data', function () {
+  });
 
   conn.on('end', function() {
     test_upgrade_no_listener_ended = true;
