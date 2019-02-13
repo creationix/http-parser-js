@@ -2,7 +2,7 @@
 var HTTPParser = require('../http-parser.js').HTTPParser;
 
 var n = 40000;
-var request = new Buffer([
+var request = Buffer.from([
   'GET /favicon.ico HTTP/1.1',
   'Host: 0.0.0.0=5000',
   'User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9) '
@@ -15,7 +15,7 @@ var request = new Buffer([
   'Connection: keep-alive',
   '', ''
 ].join('\r\n'));
-var response = new Buffer([
+var response = Buffer.from([
   'HTTP/1.1 301 Moved Permanently',
   'Location: http://www.google.com/',
   'Content-Type: text/html; charset=UTF-8',

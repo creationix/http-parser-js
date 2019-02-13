@@ -739,7 +739,7 @@ var cases = [
     name: 'utf-8 path request',
     type: REQUEST,
     raw: [
-      new Buffer('GET /δ¶/δt/pope?q=1#narf HTTP/1.1', 'utf8')
+      Buffer.from('GET /δ¶/δt/pope?q=1#narf HTTP/1.1', 'utf8')
         .toString('binary'),
       'Host: github.com',
       '', ''
@@ -749,7 +749,7 @@ var cases = [
     httpMajor: 1,
     httpMinor: 1,
     method: 'GET',
-    url: new Buffer('/δ¶/δt/pope?q=1#narf', 'utf8').toString('binary'),
+    url: Buffer.from('/δ¶/δt/pope?q=1#narf', 'utf8').toString('binary'),
     statusCode: null,
     statusText: null,
     headers: [
@@ -1721,7 +1721,7 @@ process.setMaxListeners(0);
 // Test predefined requests/responses
 cases.forEach(function(testCase) {
   var parser = new HTTPParser(testCase.type);
-  var input = new Buffer(testCase.raw, 'binary');
+  var input = Buffer.from(testCase.raw, 'binary');
   var reqEvents = ['onHeaders'];
   var completed = false;
   var message = {};
@@ -1826,7 +1826,7 @@ cases.forEach(function(testCase) {
   var ret;
 
   parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
-  ret = parser.execute(new Buffer(input));
+  ret = parser.execute(Buffer.from(input));
   assert.strictEqual(ret, Buffer.byteLength(input));
 })();
 
@@ -1837,10 +1837,10 @@ cases.forEach(function(testCase) {
   var ret;
 
   parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
-  ret = parser.execute(new Buffer(input));
+  ret = parser.execute(Buffer.from(input));
   assert.strictEqual(ret, Buffer.byteLength(input));
 
-  input = new Buffer('header-key: header-value\r\n');
+  input = Buffer.from('header-key: header-value\r\n');
   for (var i = 0; i < 10000; ++i) {
     ret = parser.execute(input);
     if (typeof ret !== 'number') {
@@ -1861,11 +1861,11 @@ cases.forEach(function(testCase) {
       type === REQUEST ? 'POST / HTTP/1.0' : 'HTTP/1.0 200 OK',
       length
     );
-    var input2 = new Buffer('a');
+    var input2 = Buffer.from('a');
     var ret;
 
     parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
-    ret = parser.execute(new Buffer(input));
+    ret = parser.execute(Buffer.from(input));
     assert.strictEqual(ret, Buffer.byteLength(input));
 
     for (var i = 0; i < length; ++i) {
@@ -1873,7 +1873,7 @@ cases.forEach(function(testCase) {
       assert.strictEqual(ret, 1);
     }
 
-    ret = parser.execute(new Buffer(input));
+    ret = parser.execute(Buffer.from(input));
     assert.strictEqual(ret, Buffer.byteLength(input));
   });
 });
@@ -1886,7 +1886,7 @@ cases.forEach(function(testCase) {
     var ret;
 
     parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
-    ret = parser.execute(new Buffer(input));
+    ret = parser.execute(Buffer.from(input));
     if (i === 0)
       assert.strictEqual(ret, Buffer.byteLength(input));
     else {
@@ -1905,7 +1905,7 @@ cases.forEach(function(testCase) {
     var ret;
 
     parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
-    ret = parser.execute(new Buffer(input));
+    ret = parser.execute(Buffer.from(input));
     if (i === 0)
       assert.strictEqual(ret, Buffer.byteLength(input));
     else {
@@ -2022,7 +2022,7 @@ cases.forEach(function(testCase) {
   for (var i = 0; i < l; i += chunk) {
     var toread = Math.min(l - i, chunk);
     ret = parser.execute(
-      new Buffer(expected.raw.slice(i, i + toread), 'binary')
+      Buffer.from(expected.raw.slice(i, i + toread), 'binary')
     );
     assert.strictEqual(ret, toread);
   }
@@ -2080,7 +2080,7 @@ console.log('responses okay');
   var ret;
 
   parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
-  ret = parser.execute(new Buffer(input));
+  ret = parser.execute(Buffer.from(input));
   assert.strictEqual(typeof ret !== 'number', true);
   //assert.strictEqual(/Malformed request line/i.test(ret.message), true);
 })();
@@ -2093,7 +2093,7 @@ console.log('responses okay');
   var ret;
 
   parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
-  ret = parser.execute(new Buffer(input));
+  ret = parser.execute(Buffer.from(input));
   assert.strictEqual(ret, input.length);
 })();
 
@@ -2104,7 +2104,7 @@ console.log('responses okay');
   var ret;
 
   parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
-  ret = parser.execute(new Buffer(input));
+  ret = parser.execute(Buffer.from(input));
   assert.strictEqual(typeof ret !== 'number', true);
   //assert.strictEqual(/Malformed header line/i.test(ret.message), true);
 })();*/
@@ -2151,7 +2151,7 @@ console.log('responses okay');
   var ret;
 
   parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
-  ret = parser.execute(new Buffer(input));
+  ret = parser.execute(Buffer.from(input));
   assert.strictEqual(ret, input.length);
 })();
 
@@ -2280,7 +2280,7 @@ function testScan(case1, case2, case3) {
       hasUpgrade = false;
       nb = 0;
 
-      ret = parser.execute(new Buffer(total.slice(0, i), 'binary'));
+      ret = parser.execute(Buffer.from(total.slice(0, i), 'binary'));
       assert.strictEqual(typeof ret === 'number', true);
       nb += ret;
 
@@ -2294,7 +2294,7 @@ function testScan(case1, case2, case3) {
       if (!hasUpgrade) {
         assert.strictEqual(nb, i);
 
-        ret = parser.execute(new Buffer(total.slice(i, j), 'binary'));
+        ret = parser.execute(Buffer.from(total.slice(i, j), 'binary'));
         assert.strictEqual(typeof ret === 'number', true);
         nb += ret;
 
@@ -2308,7 +2308,7 @@ function testScan(case1, case2, case3) {
         if (!hasUpgrade) {
           assert.strictEqual(nb, i + (j - i));
 
-          ret = parser.execute(new Buffer(total.slice(j), 'binary'));
+          ret = parser.execute(Buffer.from(total.slice(j), 'binary'));
           assert.strictEqual(typeof ret === 'number', true);
           nb += ret;
 
@@ -2399,7 +2399,7 @@ function testMultiple3(case1, case2, case3) {
     message = {};
   };
 
-  ret = parser.execute(new Buffer(total, 'binary'));
+  ret = parser.execute(Buffer.from(total, 'binary'));
 
   assert.strictEqual(parser.finish(), undefined);
   assert.strictEqual(messages.length, messageCount);
@@ -2462,7 +2462,7 @@ function createLargeChunkedMessage(bodySizeKB, rawHeaders) {
   var wrote = 0;
   var headerslen = rawHeaders.length;
   var bufsize = headerslen + (5 + 1024 + 2) * bodySizeKB + 5;
-  var buf = new Buffer(bufsize);
+  var buf = Buffer.alloc(bufsize);
 
   buf.write(rawHeaders, wrote, headerslen, 'binary');
   wrote += headerslen;

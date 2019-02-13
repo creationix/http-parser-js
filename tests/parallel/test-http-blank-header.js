@@ -29,6 +29,9 @@ server.listen(0, function() {
             '\r\n\r\nhello world\r\n' //need \r\n at end for http-parser-js to fail
     );
   });
+  
+  c.on('data', function () {
+  });
 
   c.on('end', function() {
     c.end();
