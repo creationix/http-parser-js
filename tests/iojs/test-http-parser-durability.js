@@ -1053,6 +1053,39 @@ var cases = [
   },
   // RESPONSES =================================================================
   {
+    name: 'chunked upgrade response',
+    type: RESPONSE,
+    raw: [
+      'HTTP/1.1 101 Switching Protocols',
+      'Connection: upgrade',
+      'Upgrade: websocket',
+      'Sec-WebSocket-Accept: QV3I5XUXU2CdhtjixE7QCkCcMZM=',
+      'Transfer-Encoding: chunked',
+      '',
+      'hello'
+    ].join(CRLF),
+    shouldKeepAlive: true,
+    msgCompleteOnEOF: false,
+    httpMajor: 1,
+    httpMinor: 1,
+    method: null,
+    url: null,
+    statusCode: 101,
+    statusText: 'Switching Protocols',
+    headers: [
+      'Connection',
+        'upgrade',
+      'Upgrade',
+        'websocket',
+      'Sec-WebSocket-Accept',
+        'QV3I5XUXU2CdhtjixE7QCkCcMZM=',
+      'Transfer-Encoding',
+        'chunked',
+    ],
+    upgrade: 'hello',
+    body: undefined
+  },
+  {
     name: 'google 301',
     type: RESPONSE,
     raw: [
