@@ -331,6 +331,10 @@ HTTPParser.prototype.HEADER = function () {
       info.upgrade = info.method === method_connect;
     }
 
+    if (this.isChunked && info.upgrade) {
+      this.isChunked = false;
+    }
+
     info.shouldKeepAlive = this.shouldKeepAlive();
     //problem which also exists in original node: we should know skipBody before calling onHeadersComplete
     var skipBody;
