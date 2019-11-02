@@ -2,11 +2,19 @@ var assert = require('assert');
 var inspect = require('util').inspect;
 var format = require('util').format;
 
-var HTTPParser = require('../../http-parser').HTTPParser;
+//var HTTPParser = require('../../http-parser').HTTPParser;
+var HTTPParser = process.binding('http_parser').HTTPParser;
 HTTPParser.prototype[0] =
 HTTPParser.prototype[1] =
 HTTPParser.prototype[2] =
 HTTPParser.prototype[3] = function(){};
+
+const kIncomingMessage = Symbol('IncomingMessage');
+const kOnHeaders = HTTPParser.kOnHeaders | 0;
+const kOnHeadersComplete = HTTPParser.kOnHeadersComplete | 0;
+const kOnBody = HTTPParser.kOnBody | 0;
+const kOnMessageComplete = HTTPParser.kOnMessageComplete | 0;
+const kOnExecute = HTTPParser.kOnExecute | 0;
 
 var CRLF = '\r\n';
 var LF = '\n';
@@ -191,6 +199,7 @@ var cases = [
     headers: [
       'Accept',
         '*/*',
+      '', '',
     ],
     body: undefined
   },
@@ -542,9 +551,8 @@ var cases = [
     ].join(CRLF),
     shouldKeepAlive: false,
     msgCompleteOnEOF: false,
-    error: true,
-    httpMajor: 1,
-    httpMinor: null,
+    httpMajor: 0,
+    httpMinor: 9,
     method: 'GET',
     url: '/',
     statusCode: null,
@@ -611,9 +619,9 @@ var cases = [
     headers: [
       'Line1',
         //'abc def ghi jkl mno  qrs',
-        'abc def ghi jkl mno qrs',
+        'abc\tdef ghi\t\tjkl  mno \t \tqrs',
       'Line2',
-        'line2',
+        'line2\t',
       'Line3',
         'line3',
       'Line4',
@@ -940,9 +948,9 @@ var cases = [
     headers: [
       'Line1',
         //'abc def ghi jkl mno  qrs',
-        'abc def ghi jkl mno qrs',
+        'abc\tdef ghi\t\tjkl  mno \t \tqrs',
       'Line2',
-        'line2',
+        'line2\t',
       'Line3',
         'line3',
       'Line4',
@@ -1044,7 +1052,7 @@ var cases = [
     headers: [
       'Connection',
         //'keep-alive,  upgrade',
-        'keep-alive, upgrade',
+        'keep-alive,  upgrade',
       'Upgrade',
         'WebSocket',
     ],
@@ -1052,89 +1060,6 @@ var cases = [
     body: undefined
   },
   // RESPONSES =================================================================
-  {
-    name: 'chunked upgrade response',
-    type: RESPONSE,
-    raw: [
-      'HTTP/1.1 101 Switching Protocols',
-      'Connection: upgrade',
-      'Upgrade: websocket',
-      'Sec-WebSocket-Accept: QV3I5XUXU2CdhtjixE7QCkCcMZM=',
-      'Transfer-Encoding: chunked',
-      '',
-      'hello'
-    ].join(CRLF),
-    shouldKeepAlive: true,
-    msgCompleteOnEOF: false,
-    httpMajor: 1,
-    httpMinor: 1,
-    method: null,
-    url: null,
-    statusCode: 101,
-    statusText: 'Switching Protocols',
-    headers: [
-      'Connection',
-        'upgrade',
-      'Upgrade',
-        'websocket',
-      'Sec-WebSocket-Accept',
-        'QV3I5XUXU2CdhtjixE7QCkCcMZM=',
-      'Transfer-Encoding',
-        'chunked',
-    ],
-    upgrade: 'hello',
-    body: undefined
-  },
-  {
-    name: 'google 301',
-    type: RESPONSE,
-    raw: [
-      'HTTP/1.1 301 Moved Permanently',
-      'Location: http://www.google.com/',
-      'Content-Type: text/html; charset=UTF-8',
-      'Date: Sun, 26 Apr 2009 11:11:49 GMT',
-      'Expires: Tue, 26 May 2009 11:11:49 GMT',
-      'X-$PrototypeBI-Version: 1.6.0.3',
-      'Cache-Control: public, max-age=2592000',
-      'Server: gws',
-      'Content-Length:  219  ',
-      '',
-      '<HTML><HEAD><meta http-equiv="content-type" content="text/html;'
-        + 'charset=utf-8">\n<TITLE>301 Moved</TITLE></HEAD><BODY>\n<H1>301 '
-        + 'Moved</H1>\nThe document has moved\n<A HREF="http://www.google.com/'
-        + '">here</A>.\r\n</BODY></HTML>\r\n'
-    ].join(CRLF),
-    shouldKeepAlive: true,
-    msgCompleteOnEOF: false,
-    httpMajor: 1,
-    httpMinor: 1,
-    method: null,
-    url: null,
-    statusCode: 301,
-    statusText: 'Moved Permanently',
-    headers: [
-      'Location',
-        'http://www.google.com/',
-      'Content-Type',
-        'text/html; charset=UTF-8',
-      'Date',
-        'Sun, 26 Apr 2009 11:11:49 GMT',
-      'Expires',
-        'Tue, 26 May 2009 11:11:49 GMT',
-      'X-$PrototypeBI-Version',
-        '1.6.0.3',
-      'Cache-Control',
-        'public, max-age=2592000',
-      'Server',
-        'gws',
-      'Content-Length',
-        '219',
-    ],
-    body: '<HTML><HEAD><meta http-equiv="content-type" content="text/html;'
-        + 'charset=utf-8">\n<TITLE>301 Moved</TITLE></HEAD><BODY>\n<H1>301 '
-        + 'Moved</H1>\nThe document has moved\n<A HREF="http://www.google.com/'
-        + '">here</A>.\r\n</BODY></HTML>\r\n'
-  },
   {
     name: 'no content-length response',
     type: RESPONSE,
@@ -1271,50 +1196,11 @@ var cases = [
     headers: [
       'Content-Type',
         'text/plain',
+        '','',
       'Transfer-Encoding',
         'chunked',
     ],
     body: 'This is the data in the first chunk\r\n'
-  },
-  {
-    name: 'chunked with (arguably wrong) content length',
-    type: RESPONSE,
-    raw: [
-      'HTTP/1.1 200 OK',
-      'Transfer-Encoding: chunked',
-      'Content-Length: 13',
-      'Content-Type: application/download',
-      'Content-Disposition: attachment;filename=test.txt',
-      'Connection: keep-alive',
-      '',
-      '7',
-      'thunk1\n',
-      '6',
-      'thunk2',
-      '0',
-      '', ''
-    ].join(CRLF),
-    shouldKeepAlive: true,
-    msgCompleteOnEOF: false,
-    httpMajor: 1,
-    httpMinor: 1,
-    method: null,
-    url: null,
-    statusCode: 200,
-    statusText: 'OK',
-    headers: [
-      'Transfer-Encoding',
-        'chunked',
-      'Content-Length',
-        '13',
-      'Content-Type',
-        'application/download',
-      'Content-Disposition',
-        'attachment;filename=test.txt',
-      'Connection',
-        'keep-alive',
-    ],
-    body: 'thunk1\nthunk2'
   },
   // Test below does not work, not in Chrome either, but could be detected,
   //   not sure if it ever actually happens though.
@@ -1751,9 +1637,56 @@ for (var i = 0; i < cases.length; ++i) {
 // handlers
 process.setMaxListeners(0);
 
+var methods = [
+  'DELETE',
+  'GET',
+  'HEAD',
+  'POST',
+  'PUT',
+  'CONNECT',
+  'OPTIONS',
+  'TRACE',
+  'COPY',
+  'LOCK',
+  'MKCOL',
+  'MOVE',
+  'PROPFIND',
+  'PROPPATCH',
+  'SEARCH',
+  'UNLOCK',
+  'BIND',
+  'REBIND',
+  'UNBIND',
+  'ACL',
+  'REPORT',
+  'MKACTIVITY',
+  'CHECKOUT',
+  'MERGE',
+  'M-SEARCH',
+  'NOTIFY',
+  'SUBSCRIBE',
+  'UNSUBSCRIBE',
+  'PATCH',
+  'PURGE',
+  'MKCALENDAR',
+  'LINK',
+  'UNLINK'
+];
+
+function newParser(type) {
+  var parser;
+  if (parseInt(process.versions.node) >= 12) {
+    parser = new HTTPParser();
+    parser.initialize(type, {});
+  } else {
+    parser = new HTTPParser(type);
+  }
+  return parser;
+}
+
 // Test predefined requests/responses
 cases.forEach(function(testCase) {
-  var parser = new HTTPParser(testCase.type);
+  var parser = newParser(testCase.type);
   var input = Buffer.from(testCase.raw, 'binary');
   var reqEvents = ['onHeaders'];
   var completed = false;
@@ -1768,6 +1701,7 @@ cases.forEach(function(testCase) {
                        'onHeaders',
                        'Expected onHeaders to be the next event for: ' +
                          testCase.name);
+    method = methods[method] || null;
     reqEvents.shift();
     message = {
       type: (method === null && url === null ? RESPONSE : REQUEST),
@@ -1804,22 +1738,25 @@ cases.forEach(function(testCase) {
     completed = true;
   }
 
-  parser.onHeadersComplete = function(info) {
-    onHeaders(info.versionMajor,
-              info.versionMinor,
-              info.headers,
-              info.method || null,
-              info.url || null,
-              info.statusCode || null,
-              info.statusMessage === undefined ? null : info.statusMessage,
-              info.upgrade,
-              info.shouldKeepAlive);
+  parser[kOnHeadersComplete] = function(versionMajor,
+          versionMinor, headers, method, url, statusCode,
+          statusMessage, upgrade, shouldKeepAlive
+  ) {
+    onHeaders(versionMajor,
+              versionMinor,
+              headers,
+              method || null,
+              url || null,
+              statusCode || null,
+              statusMessage === undefined ? null : statusMessage,
+              upgrade,
+              shouldKeepAlive);
   };
-  parser.onHeaders = function(headers) {
+  parser[kOnHeaders] = function(headers) {
     message.headers = message.headers.concat(headers);
   };
-  parser.onBody = onBody;
-  parser.onMessageComplete = onMessageComplete;
+  parser[kOnBody] = onBody;
+  parser[kOnMessageComplete] = onMessageComplete;
 
   process.on('exit', function() {
     assert.strictEqual(completed,
@@ -1835,9 +1772,10 @@ cases.forEach(function(testCase) {
     throw new Error('Unexpected error thrown for: ' + testCase.name + ':\n\n' +
                     ex.stack + '\n');
   }
-  if (testCase.error !== undefined && typeof ret === 'number')
+  if (testCase.error !== undefined && typeof ret === 'number') {
+    console.log(message);
     throw new Error('Expected error for: ' + testCase.name);
-  else if (testCase.error === undefined && typeof ret !== 'number') {
+  } else if (testCase.error === undefined && typeof ret !== 'number') {
     throw new Error('Unexpected error for: ' + testCase.name + ':\n\n' +
                     ret.stack + '\n');
   }
@@ -1854,22 +1792,23 @@ cases.forEach(function(testCase) {
 
 // Test execute() return value
 (function() {
-  var parser = new HTTPParser(REQUEST);
+  var parser = newParser(REQUEST);
   var input = 'GET / HTTP/1.1\r\nheader: value\r\nhdr: value\r\n';
   var ret;
 
-  parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
+  parser[kOnHeaders] = parser[kOnBody] = parser[kOnMessageComplete] = function() {};
   ret = parser.execute(Buffer.from(input));
   assert.strictEqual(ret, Buffer.byteLength(input));
 })();
 
+if (1) {
 // Test for header overflow
 [REQUEST, RESPONSE].forEach(function(type) {
-  var parser = new HTTPParser(type);
+  var parser = newParser(type);
   var input = (type === REQUEST ? 'GET / HTTP/1.1\r\n' : 'HTTP/1.0 200 OK\r\n');
   var ret;
 
-  parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
+  parser[kOnHeaders] = parser[kOnBody] = parser[kOnMessageComplete] = function() {};
   ret = parser.execute(Buffer.from(input));
   assert.strictEqual(ret, Buffer.byteLength(input));
 
@@ -1888,7 +1827,7 @@ cases.forEach(function(testCase) {
 // Test for no overflow with long body
 [REQUEST, RESPONSE].forEach(function(type) {
   [1000, 100000].forEach(function(length) {
-    var parser = new HTTPParser(type);
+    var parser = newParser(type);
     var input = format(
       '%s\r\nConnection: Keep-Alive\r\nContent-Length: %d\r\n\r\n',
       type === REQUEST ? 'POST / HTTP/1.0' : 'HTTP/1.0 200 OK',
@@ -1897,7 +1836,7 @@ cases.forEach(function(testCase) {
     var input2 = Buffer.from('a');
     var ret;
 
-    parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
+    parser[kOnHeaders] = parser[kOnBody] = parser[kOnMessageComplete] = function() {};
     ret = parser.execute(Buffer.from(input));
     assert.strictEqual(ret, Buffer.byteLength(input));
 
@@ -1914,11 +1853,11 @@ cases.forEach(function(testCase) {
 // Test for content length overflow
 /*['9007199254740991', '9007199254740992', '9007199254740993'].forEach(
   function(length, i) {
-    var parser = new HTTPParser(RESPONSE);
+    var parser = newParser(RESPONSE);
     var input = format('HTTP/1.1 200 OK\r\nContent-Length: %s\r\n\r\n', length);
     var ret;
 
-    parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
+    parser[kOnHeaders] = parser[kOnBody] = parser[kOnMessageComplete] = function() {};
     ret = parser.execute(Buffer.from(input));
     if (i === 0)
       assert.strictEqual(ret, Buffer.byteLength(input));
@@ -1932,12 +1871,12 @@ cases.forEach(function(testCase) {
 // Test for chunk length overflow
 /*['1fffffffffffff', '20000000000000', '20000000000001'].forEach(
   function(length, i) {
-    var parser = new HTTPParser(RESPONSE);
+    var parser = newParser(RESPONSE);
     var input = format('HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n' +
                        '%s\r\n...', length);
     var ret;
 
-    parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
+    parser[kOnHeaders] = parser[kOnBody] = parser[kOnMessageComplete] = function() {};
     ret = parser.execute(Buffer.from(input));
     if (i === 0)
       assert.strictEqual(ret, Buffer.byteLength(input));
@@ -1996,7 +1935,7 @@ cases.forEach(function(testCase) {
    bodySize: 31337 * 1024
  }
 ].forEach(function(expected) {
-  var parser = new HTTPParser(expected.type);
+  var parser = newParser(expected.type);
   var expectedBodySize = (expected.bodySize !== undefined
                           ? expected.bodySize
                           : (expected.body && expected.body.length) || 0);
@@ -2021,21 +1960,25 @@ cases.forEach(function(testCase) {
       statusText: statusText
     };
   };
-  parser.onHeadersComplete = function(info) {
-    onHeaders(info.versionMajor,
-              info.versionMinor,
-              info.headers,
-              info.method || null,
-              info.url || null,
-              info.statusCode || null,
-              info.statusMessage === undefined ? null : info.statusMessage,
-              info.upgrade,
-              info.shouldKeepAlive);
+  parser[kOnHeadersComplete] = function(versionMajor,
+          versionMinor, headers, method, url, statusCode,
+          statusMessage, upgrade, shouldKeepAlive
+  ) {
+    method = methods[method] || null;
+    onHeaders(versionMajor,
+              versionMinor,
+              headers,
+              method || null,
+              url || null,
+              statusCode || null,
+              statusMessage === undefined ? null : statusMessage,
+              upgrade,
+              shouldKeepAlive);
   };
-  parser.onHeaders = function(headers) {
+  parser[kOnHeaders] = function(headers) {
     message.headers = message.headers.concat(headers);
   };
-  parser.onBody = function(data, offset, len) {
+  parser[kOnBody] = function(data, offset, len) {
     if (message.bodySize === undefined) {
       message.bodySize = len;
       body = data.toString('binary', offset, offset + len);
@@ -2044,7 +1987,7 @@ cases.forEach(function(testCase) {
       body += data.toString('binary', offset, offset + len);
     }
   };
-  parser.onMessageComplete = function() {
+  parser[kOnMessageComplete] = function() {
     messages.push(message);
     message = {};
   };
@@ -2108,11 +2051,11 @@ console.log('responses okay');
 
 // Test malformed HTTP version in request
 (function() {
-  var parser = new HTTPParser(REQUEST);
+  var parser = newParser(REQUEST);
   var input = 'GET / HTP/1.1\r\n\r\n';
   var ret;
 
-  parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
+  parser[kOnHeaders] = parser[kOnBody] = parser[kOnMessageComplete] = function() {};
   ret = parser.execute(Buffer.from(input));
   assert.strictEqual(typeof ret !== 'number', true);
   //assert.strictEqual(/Malformed request line/i.test(ret.message), true);
@@ -2120,23 +2063,23 @@ console.log('responses okay');
 
 // Test well-formed but incomplete request
 (function() {
-  var parser = new HTTPParser(REQUEST);
+  var parser = newParser(REQUEST);
   var input = 'GET / HTTP/1.1\r\nContent-Type: text/plain\r\n' +
               'Content-Length: 6\r\n\r\nfooba';
   var ret;
 
-  parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
+  parser[kOnHeaders] = parser[kOnBody] = parser[kOnMessageComplete] = function() {};
   ret = parser.execute(Buffer.from(input));
   assert.strictEqual(ret, input.length);
 })();
 
 // Test illegal header field name line folding in request
 /*(function() {
-  var parser = new HTTPParser(REQUEST);
+  var parser = newParser(REQUEST);
   var input = 'GET / HTTP/1.1\r\nname\r\n : value\r\n\r\n';
   var ret;
 
-  parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
+  parser[kOnHeaders] = parser[kOnBody] = parser[kOnMessageComplete] = function() {};
   ret = parser.execute(Buffer.from(input));
   assert.strictEqual(typeof ret !== 'number', true);
   //assert.strictEqual(/Malformed header line/i.test(ret.message), true);
@@ -2144,7 +2087,7 @@ console.log('responses okay');
 
 // Test large SSL certificate header value in request
 (function() {
-  var parser = new HTTPParser(REQUEST);
+  var parser = newParser(REQUEST);
   var input =
     'GET / HTTP/1.1\r\n' +
     'X-SSL-Bullshit:   -----BEGIN CERTIFICATE-----\r\n' +
@@ -2183,7 +2126,7 @@ console.log('responses okay');
     '\r\n';
   var ret;
 
-  parser.onHeaders = parser.onBody = parser.onMessageComplete = function() {};
+  parser[kOnHeaders] = parser[kOnBody] = parser[kOnMessageComplete] = function() {};
   ret = parser.execute(Buffer.from(input));
   assert.strictEqual(ret, input.length);
 })();
@@ -2228,7 +2171,7 @@ testScan(getMessageByName('query url with question mark'),
          getMessageByName('connect request'));
 console.log('requests okay');
 
-
+}
 
 
 // HELPER FUNCTIONS ============================================================
@@ -2303,11 +2246,11 @@ function testScan(case1, case2, case3) {
       }
       ++ops;
 
-      var parser = new HTTPParser(case1.type);
-      parser.onHeaders = onHeaders;
-      parser.onHeadersComplete = onHeadersComplete;
-      parser.onBody = onBody;
-      parser.onMessageComplete = onMessageComplete;
+      var parser = newParser(case1.type);
+      parser[kOnHeaders] = onHeaders;
+      parser[kOnHeadersComplete] = onHeadersComplete;
+      parser[kOnBody] = onBody;
+      parser[kOnMessageComplete] = onMessageComplete;
 
       messages = [];
       hasUpgrade = false;
@@ -2383,7 +2326,7 @@ function testScan(case1, case2, case3) {
 function testMultiple3(case1, case2, case3) {
   var messageCount = countParsedMessages(case1, case2, case3);
   var total = case1.raw + case2.raw + case3.raw;
-  var parser = new HTTPParser(case1.type);
+  var parser = newParser(case1.type);
   var messages = [];
   var message = {};
   var ret;
@@ -2406,7 +2349,7 @@ function testMultiple3(case1, case2, case3) {
     };
   };
 
-  parser.onHeadersComplete = function(info) {
+  parser[kOnHeadersComplete] = function(info) {
     onHeaders(info.versionMajor,
               info.versionMinor,
               info.headers,
@@ -2417,17 +2360,17 @@ function testMultiple3(case1, case2, case3) {
               info.upgrade,
               info.shouldKeepAlive);
   };
-  parser.onHeaders = function(headers) {
+  parser[kOnHeaders] = function(headers) {
     message.headers = message.headers.concat(headers);
   };
 
-  parser.onBody = function(data, offset, len) {
+  parser[kOnBody] = function(data, offset, len) {
     if (!message.body)
       message.body = data.toString('binary', offset, offset + len);
     else
       message.body += data.toString('binary', offset, offset + len);
   };
-  parser.onMessageComplete = function() {
+  parser[kOnMessageComplete] = function() {
     messages.push(message);
     message = {};
   };

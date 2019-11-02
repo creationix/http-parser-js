@@ -2,7 +2,7 @@
 require('../common');
 
 // set max header size
-require('../../../http-parser-js').HTTPParser.maxHeaderSize = 1024 * 1024; // 1MB instead of 80kb
+process.binding('http_parser').HTTPParser.maxHeaderSize = 1024 * 1024; // 1MB instead of 80kb
 
 var assert = require('assert');
 var http = require('http');

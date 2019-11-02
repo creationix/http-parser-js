@@ -1,6 +1,6 @@
 /* eslint-disable required-modules */
 'use strict';
-process.binding('http_parser').HTTPParser = require('../http-parser.js').HTTPParser;
+//process.binding('http_parser').HTTPParser = require('../http-parser.js').HTTPParser;
 
 var path = require('path');
 var fs = require('fs');
