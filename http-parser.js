@@ -4,6 +4,14 @@ var assert = require('assert');
 
 exports.HTTPParser = HTTPParser;
 function HTTPParser(type) {
+  assert.ok(type === HTTPParser.REQUEST || type === HTTPParser.RESPONSE || type === undefined);
+  if (type === undefined) {
+    // Node v12+
+  } else {
+    this.initialize(type);
+  }
+}
+HTTPParser.prototype.initialize = function (type, async_resource) {
   assert.ok(type === HTTPParser.REQUEST || type === HTTPParser.RESPONSE);
   this.type = type;
   this.state = type + '_LINE';
@@ -19,7 +27,8 @@ function HTTPParser(type) {
   this.body_bytes = null;
   this.isUserCall = false;
   this.hadError = false;
-}
+};
+
 HTTPParser.encoding = 'ascii';
 HTTPParser.maxHeaderSize = 80 * 1024; // maxHeaderSize (in bytes) is configurable, but 80kb by default;
 HTTPParser.REQUEST = 'REQUEST';

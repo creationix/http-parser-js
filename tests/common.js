@@ -343,6 +343,10 @@ if (global.Symbol) {
   knownGlobals.push(Symbol);
 }
 
+if (global.queueMicrotask) {
+  knownGlobals.push(queueMicrotask);
+}
+
 function leakedGlobals() {
   var leaked = [];
 

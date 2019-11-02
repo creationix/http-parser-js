@@ -47,8 +47,12 @@ server.listen(0, function() {
         break;
     }
 
-    assert.equal(req.output.length, 0);
-    assert.equal(req.outputEncodings.length, 0);
+    if (req.outputData) { // Node v12+
+      assert.strictEqual(req.outputData.length, 0);
+    } else {
+      assert.equal(req.output.length, 0);
+      assert.equal(req.outputEncodings.length, 0);
+    }
     server.close();
   }));
 

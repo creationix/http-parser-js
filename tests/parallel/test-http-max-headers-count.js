@@ -1,3 +1,5 @@
+// Note: If this test fails, monkey-patching probably failed and you're using
+// the default Node parser, which now has a limit of 8KB for header data
 'use strict';
 require('../common');
 var assert = require('assert');
