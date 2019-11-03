@@ -218,6 +218,32 @@ var cases = [
     body: 'HELLO'
   },
   {
+    name: 'duplicate content-length',
+    type: REQUEST,
+    raw: [
+      'GET /get_duplicate_content_length HTTP/1.0',
+      'Content-Length: 5',
+      'Content-Length: 5',
+      '',
+      'HELLO'
+    ].join(CRLF),
+    shouldKeepAlive: false,
+    msgCompleteOnEOF: false,
+    httpMajor: 1,
+    httpMinor: 0,
+    method: 'GET',
+    url: '/get_duplicate_content_length',
+    statusCode: null,
+    statusText: null,
+    headers: [
+      'Content-Length',
+        '5',
+      'Content-Length',
+        '5',
+    ],
+    body: 'HELLO'
+  },
+  {
     name: 'post identity body world',
     type: REQUEST,
     raw: [
