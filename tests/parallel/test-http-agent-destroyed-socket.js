@@ -29,6 +29,17 @@ var server = http.createServer(function(req, res) {
       console.log('request1 socket closed');
     });
     response.pipe(process.stdout);
+    response.socket.once('close', function() {
+      // assert request2 was removed from the queue
+      assert(!agent.requests[key]);
+      console.log("waiting for request2.onSocket's nextTick");
+      process.nextTick(function() {
+        // assert that the same socket was not assigned to request2,
+        // since it was destroyed.
+        assert(request1.socket !== request2.socket);
+        assert(!request2.socket.destroyed, 'the socket is destroyed');
+      });
+    });
     response.on('end', function() {
       console.log('response1 done');
       /////////////////////////////////
@@ -44,17 +55,6 @@ var server = http.createServer(function(req, res) {
       // is triggered.
       request1.socket.destroy();
 
-      response.once('close', function() {
-        // assert request2 was removed from the queue
-        assert(!agent.requests[key]);
-        console.log("waiting for request2.onSocket's nextTick");
-        process.nextTick(function() {
-          // assert that the same socket was not assigned to request2,
-          // since it was destroyed.
-          assert(request1.socket !== request2.socket);
-          assert(!request2.socket.destroyed, 'the socket is destroyed');
-        });
-      });
     });
   });
 
