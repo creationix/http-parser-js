@@ -25,7 +25,7 @@ This should now be usable in any node application, it now supports (nearly) ever
 
 ### Node Versions
 
-`http-parser-js` should work via monkey-patching on Node v6-v11, and v13.
+`http-parser-js` should work via monkey-patching on Node v6-v11, and v13-14.
 
 Node v12.x renamed the internal http parser, and did not expose it for monkey-patching, so to be able to monkey-patch on Node v12, you must run `node --http-parser=legacy file.js` to opt in to the old, monkey-patchable http_parser binding.
 
