@@ -1,3 +1,6 @@
+![Node](https://github.com/creationix/http-parser-js/workflows/Node/badge.svg)
+![Node-v12](https://github.com/creationix/http-parser-js/workflows/Node-v12/badge.svg)
+
 # HTTP Parser
 
 This library parses HTTP protocol for requests and responses.  It was created to replace `http_parser.c` since calling C++ function from JS is really slow in V8.  However, it is now primarily useful in having a more flexible/tolerant HTTP parser when dealing with legacy services that do not meet the strict HTTP parsing rules Node's parser follows.
