@@ -36,8 +36,8 @@ function request(i) {
       if (count < max) {
         assert.equal(http.globalAgent.sockets[name].indexOf(socket), -1);
       } else {
-        assert(!http.globalAgent.sockets.hasOwnProperty(name));
-        assert(!http.globalAgent.requests.hasOwnProperty(name));
+        assert(!http.globalAgent.sockets[name]);
+        assert(!http.globalAgent.requests[name]);
         server.close();
       }
     });

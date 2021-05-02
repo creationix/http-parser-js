@@ -38,7 +38,7 @@ server.listen(0, function() {
   }, function(response) {
     response.on('end', function() {
       assert.equal(agent.sockets[name].length, 1);
-      assert(!agent.requests.hasOwnProperty(name));
+      assert(!agent.requests[name]);
       server.close();
     });
     response.resume();
@@ -46,6 +46,6 @@ server.listen(0, function() {
 });
 
 process.on('exit', function() {
-  assert(!agent.sockets.hasOwnProperty(name));
-  assert(!agent.requests.hasOwnProperty(name));
+  assert(!agent.sockets[name]);
+  assert(!agent.requests[name]);
 });

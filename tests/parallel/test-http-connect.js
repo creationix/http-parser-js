@@ -45,8 +45,8 @@ server.listen(0, function() {
 
     // Make sure this request got removed from the pool.
     var name = 'localhost:' + server.address().port;
-    assert(!http.globalAgent.sockets.hasOwnProperty(name));
-    assert(!http.globalAgent.requests.hasOwnProperty(name));
+    assert(!http.globalAgent.sockets[name]);
+    assert(!http.globalAgent.requests[name]);
 
     // Make sure this socket has detached.
     assert(!socket.ondata);
