@@ -293,6 +293,10 @@ if (global.gc) {
   knownGlobals.push(global.gc);
 }
 
+if (global.performance) {
+  knownGlobals.push(global.performance);
+}
+
 if (global.DTRACE_HTTP_SERVER_RESPONSE) {
   knownGlobals.push(DTRACE_HTTP_SERVER_RESPONSE);
   knownGlobals.push(DTRACE_HTTP_SERVER_REQUEST);
