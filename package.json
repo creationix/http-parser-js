@@ -12,7 +12,8 @@
     "url": "git://github.com/creationix/http-parser-js.git"
   },
   "files": [
-    "http-parser.js"
+    "http-parser.js",
+    "http-parser.d.ts"
   ],
   "keywords": [
     "http"
