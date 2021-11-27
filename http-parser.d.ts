@@ -62,8 +62,8 @@ type HeaderInfo<HEADER = HeaderObject> = {
   upgrade: boolean
   shouldKeepAlive: boolean
 }
-export type OnHeadersCompleteParser<Mode_0_12 extends boolean = true> = Mode_0_12 extends true
-  ? (info: HeaderInfo)=> number
+export type OnHeadersCompleteParser<HEADER = HeaderObject, Mode_0_12 extends boolean = true> = Mode_0_12 extends true
+  ? (info: HeaderInfo<HEADER>)=> number
   : (
     versionMajor: number,
     versionMinor: number,
