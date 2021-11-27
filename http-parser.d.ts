@@ -62,8 +62,8 @@ type HeaderInfo<HEADER = HeaderObject> = {
   upgrade: boolean
   shouldKeepAlive: boolean
 }
-export type OnHeadersCompleteParser<Mode_0_12 extends boolean = true> = Mode_0_12 extends true
-  ? (info: HeaderInfo)=> number
+export type OnHeadersCompleteParser<HEADER = HeaderObject, Mode_0_12 extends boolean = true> = Mode_0_12 extends true
+  ? (info: HeaderInfo<HEADER>)=> number
   : (
     versionMajor: number,
     versionMinor: number,
@@ -87,10 +87,10 @@ declare class HTTPParserJS {
   initialize(type: ParserType, async_resource?: unknown): void
 
   // Some handler stubs, needed for compatibility
-  [HTTPParserConstructor.kOnHeaders]: OnHeadersParser
-  [HTTPParserConstructor.kOnHeadersComplete]: OnHeadersCompleteParser
-  [HTTPParserConstructor.kOnBody]: OnBodyParser
-  [HTTPParserConstructor.kOnMessageComplete]: noop
+  [HTTPParser.kOnHeaders]: OnHeadersParser
+  [HTTPParser.kOnHeadersComplete]: OnHeadersCompleteParser
+  [HTTPParser.kOnBody]: OnBodyParser
+  [HTTPParser.kOnMessageComplete]: noop
 
   reinitialize: HTTPParserConstructor
   close: noop
@@ -132,17 +132,17 @@ declare class HTTPParserJS {
   private BODY_RAW(): void
   private BODY_SIZED(): void
 
-  get onHeaders(): HTTPParser[HTTPParserConstructor.kOnHeaders]
-  set onHeaders(to: OnHeadersParser): void
+  get onHeaders(): OnHeadersParser
+  set onHeaders(to: OnHeadersParser)
 
-  get onHeadersComplete(): HTTPParser[HTTPParserConstructor.kOnHeadersComplete]
-  set onHeadersComplete(to: OnHeadersCompleteParser): void
+  get onHeadersComplete(): OnHeadersCompleteParser
+  set onHeadersComplete(to: OnHeadersCompleteParser)
 
-  get onBody(): HTTPParser[HTTPParserConstructor.kOnBody]
-  set onBody(to: OnBodyParser): void
+  get onBody(): OnBodyParser
+  set onBody(to: OnBodyParser)
 
-  get onMessageComplete(): HTTPParser[HTTPParserConstructor.kOnMessageComplete]
-  set onMessageComplete(to: noop): void
+  get onMessageComplete(): noop
+  set onMessageComplete(to: noop)
 }
 
 interface HTTPParserConstructor extends Function {
