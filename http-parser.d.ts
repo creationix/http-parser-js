@@ -87,10 +87,10 @@ declare class HTTPParserJS {
   initialize(type: ParserType, async_resource?: unknown): void
 
   // Some handler stubs, needed for compatibility
-  [HTTPParserConstructor.kOnHeaders]: OnHeadersParser
-  [HTTPParserConstructor.kOnHeadersComplete]: OnHeadersCompleteParser
-  [HTTPParserConstructor.kOnBody]: OnBodyParser
-  [HTTPParserConstructor.kOnMessageComplete]: noop
+  [HTTPParser.kOnHeaders]: OnHeadersParser
+  [HTTPParser.kOnHeadersComplete]: OnHeadersCompleteParser
+  [HTTPParser.kOnBody]: OnBodyParser
+  [HTTPParser.kOnMessageComplete]: noop
 
   reinitialize: HTTPParserConstructor
   close: noop
