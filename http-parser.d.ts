@@ -132,17 +132,17 @@ declare class HTTPParserJS {
   private BODY_RAW(): void
   private BODY_SIZED(): void
 
-  get onHeaders(): HTTPParser[HTTPParserConstructor.kOnHeaders]
-  set onHeaders(to: OnHeadersParser): void
+  get onHeaders(): OnHeadersParser
+  set onHeaders(to: OnHeadersParser)
 
-  get onHeadersComplete(): HTTPParser[HTTPParserConstructor.kOnHeadersComplete]
-  set onHeadersComplete(to: OnHeadersCompleteParser): void
+  get onHeadersComplete(): OnHeadersCompleteParser
+  set onHeadersComplete(to: OnHeadersCompleteParser)
 
-  get onBody(): HTTPParser[HTTPParserConstructor.kOnBody]
-  set onBody(to: OnBodyParser): void
+  get onBody(): OnBodyParser
+  set onBody(to: OnBodyParser)
 
-  get onMessageComplete(): HTTPParser[HTTPParserConstructor.kOnMessageComplete]
-  set onMessageComplete(to: noop): void
+  get onMessageComplete(): noop
+  set onMessageComplete(to: noop)
 }
 
 interface HTTPParserConstructor extends Function {
