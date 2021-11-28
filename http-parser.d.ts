@@ -63,7 +63,7 @@ type HeaderInfo<HEADER = HeaderObject> = {
   shouldKeepAlive: boolean
 }
 export type OnHeadersCompleteParser<HEADER = HeaderObject, Mode_0_12 extends boolean = true> = Mode_0_12 extends true
-  ? (info: HeaderInfo<HEADER>)=> number
+  ? (info: HeaderInfo<HEADER>)=> number | void
   : (
     versionMajor: number,
     versionMinor: number,
@@ -74,7 +74,7 @@ export type OnHeadersCompleteParser<HEADER = HeaderObject, Mode_0_12 extends boo
     statusMessage: string,
     upgrade: boolean,
     shouldKeepAlive: boolean,
-  )=> number
+  )=> number | void
 export type OnBodyParser = (chunk: Buffer, offset: number, length: number)=> void
 // Only called in the slow case where slow means
 // that the request headers were either fragmented
