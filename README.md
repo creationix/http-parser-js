@@ -33,6 +33,10 @@ This should now be usable in any node application, it now supports (nearly) ever
 
 Node v12.x renamed the internal http parser, and did not expose it for monkey-patching, so to be able to monkey-patch on Node v12, you must run `node --http-parser=legacy file.js` to opt in to the old, monkey-patchable http_parser binding.
 
+## Standalone usage
+
+While this module is intended to be used as a replacement for the internal Node.js parser, it can be used as a standalone parser. The [`standalone-example.js`](standalone-example.js) demonstrates how to use the somewhat awkward API (coming from compatibility with the Node.js internals) to parse HTTP from raw Buffers.
+
 ## License
 
 MIT.
