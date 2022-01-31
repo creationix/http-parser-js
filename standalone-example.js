@@ -3,7 +3,7 @@
   Both parseRequest and parseResponse can be used to parse a raw HTTP request/response from a Buffer.
 */
 
-const { deepStrictEqual } = require('assert');
+const { deepStrictEqual, throws } = require('assert');
 // Replace the require when using the module from npm.
 //const { HTTPParser } = require('http-parser-js');
 const { HTTPParser } = require('./http-parser.js');
@@ -160,7 +160,7 @@ console.log('Example: POST request with body:');
 parsed = parseRequest(
   Buffer.from(`POST /memes HTTP/1.1
 Host: www.example.com
-Content-Length: 8
+Content-Length: 7
 Content-Type: text/plain
 
 foo bar
@@ -175,7 +175,7 @@ deepStrictEqual(parsed.method, 'POST');
 deepStrictEqual(parsed.url, '/memes');
 deepStrictEqual(parsed.versionMajor, 1);
 deepStrictEqual(parsed.versionMinor, 1);
-deepStrictEqual(parsed.headers, ['Host', 'www.example.com', 'Content-Length', '8', 'Content-Type', 'text/plain']);
+deepStrictEqual(parsed.headers, ['Host', 'www.example.com', 'Content-Length', '7', 'Content-Type', 'text/plain']);
 deepStrictEqual(parsed.body.toString(), 'foo bar');
 deepStrictEqual(parsed.trailers, []);
 
@@ -233,3 +233,12 @@ deepStrictEqual(parsed.versionMinor, 1);
 deepStrictEqual(parsed.headers, ['Content-Type', 'text/plain', 'Transfer-Encoding', 'chunked', 'Trailer', 'Expires']);
 deepStrictEqual(parsed.body.toString(), 'MozillaDeveloperNetwork');
 deepStrictEqual(parsed.trailers, ['Expires', 'Wed, 21 Oct 2015 07:28:00 GMT']);
+
+throws(function () {
+  parseResponse(
+    Buffer.from(`HTTP/1.1 200 OK
+Content-Length: 1
+
+`)
+  );
+});
