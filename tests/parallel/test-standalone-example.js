@@ -1,0 +1,1 @@
+require('../../standalone-example.js');
