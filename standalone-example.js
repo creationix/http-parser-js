@@ -163,7 +163,7 @@ Host: www.example.com
 Content-Length: 8
 Content-Type: text/plain
 
-your mom
+foo bar
 `)
 );
 
@@ -176,7 +176,7 @@ deepStrictEqual(parsed.url, '/memes');
 deepStrictEqual(parsed.versionMajor, 1);
 deepStrictEqual(parsed.versionMinor, 1);
 deepStrictEqual(parsed.headers, ['Host', 'www.example.com', 'Content-Length', '8', 'Content-Type', 'text/plain']);
-deepStrictEqual(parsed.body.toString(), 'your mom');
+deepStrictEqual(parsed.body.toString(), 'foo bar');
 deepStrictEqual(parsed.trailers, []);
 
 console.log('Example: basic HTML response');
