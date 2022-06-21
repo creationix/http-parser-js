@@ -65,7 +65,6 @@ var methods = exports.methods = HTTPParser.methods = [
   'CONNECT',
   'OPTIONS',
   'TRACE',
-  'SOURCE',
   'COPY',
   'LOCK',
   'MKCOL',
@@ -90,7 +89,8 @@ var methods = exports.methods = HTTPParser.methods = [
   'PURGE',
   'MKCALENDAR',
   'LINK',
-  'UNLINK'
+  'UNLINK',
+  'SOURCE',
 ];
 var method_connect = methods.indexOf('CONNECT');
 HTTPParser.prototype.reinitialize = HTTPParser;
