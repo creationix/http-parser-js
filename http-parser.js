@@ -65,6 +65,7 @@ var methods = exports.methods = HTTPParser.methods = [
   'CONNECT',
   'OPTIONS',
   'TRACE',
+  'SOURCE',
   'COPY',
   'LOCK',
   'MKCOL',
