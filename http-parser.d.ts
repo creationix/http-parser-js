@@ -48,14 +48,14 @@ type StateFinishAllowedKey =
   | 'RESPONSE_LINE'
   | 'BODY_RAW'
 
-type HeaderObject = Record<string, string>
+type HeaderObject = Array<string>
 type noop<T = void> = ()=> T
 
 type HeaderInfo<HEADER = HeaderObject> = {
   versionMajor: number
   versionMinor: number
   headers: HEADER
-  method: RequestMethod
+  method: number
   url: string
   statusCode: number
   statusMessage: string
@@ -68,7 +68,7 @@ export type OnHeadersCompleteParser<HEADER = HeaderObject, Mode_0_12 extends boo
     versionMajor: number,
     versionMinor: number,
     headers: HEADER,
-    method: RequestMethod,
+    method: number,
     url: string,
     statusCode: number,
     statusMessage: string,
