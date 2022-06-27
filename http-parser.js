@@ -10,6 +10,7 @@ function HTTPParser(type) {
   } else {
     this.initialize(type);
   }
+  this.maxHeaderSize=HTTPParser.maxHeaderSize
 }
 HTTPParser.prototype.initialize = function (type, async_resource) {
   assert.ok(type === HTTPParser.REQUEST || type === HTTPParser.RESPONSE);
@@ -136,7 +137,7 @@ HTTPParser.prototype.execute = function (chunk, start, length) {
   length = this.offset - start;
   if (headerState[this.state]) {
     this.headerSize += length;
-    if (this.headerSize > HTTPParser.maxHeaderSize) {
+    if (this.headerSize > (this.maxHeaderSize||HTTPParser.maxHeaderSize)) {
       return new Error('max header size exceeded');
     }
   }
