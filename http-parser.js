@@ -98,6 +98,7 @@ HTTPParser.prototype.reinitialize = HTTPParser;
 HTTPParser.prototype.close =
 HTTPParser.prototype.pause =
 HTTPParser.prototype.resume =
+HTTPParser.prototype.remove =
 HTTPParser.prototype.free = function () {};
 HTTPParser.prototype._compatMode0_11 = false;
 HTTPParser.prototype.getAsyncId = function() { return 0; };
@@ -392,7 +393,8 @@ HTTPParser.prototype.BODY_CHUNKHEAD = function () {
 
 HTTPParser.prototype.BODY_CHUNK = function () {
   var length = Math.min(this.end - this.offset, this.body_bytes);
-  this.userCall()(this[kOnBody](this.chunk, this.offset, length));
+  // 0, length are for backwards compatibility. See: https://github.com/creationix/http-parser-js/pull/98
+  this.userCall()(this[kOnBody](this.chunk.slice(this.offset, this.offset + length), 0, length));
   this.offset += length;
   this.body_bytes -= length;
   if (!this.body_bytes) {
@@ -425,14 +427,15 @@ HTTPParser.prototype.BODY_CHUNKTRAILERS = function () {
 };
 
 HTTPParser.prototype.BODY_RAW = function () {
-  var length = this.end - this.offset;
-  this.userCall()(this[kOnBody](this.chunk, this.offset, length));
+  // 0, length are for backwards compatibility. See: https://github.com/creationix/http-parser-js/pull/98
+  this.userCall()(this[kOnBody](this.chunk.slice(this.offset, this.end), 0, this.end - this.offset));
   this.offset = this.end;
 };
 
 HTTPParser.prototype.BODY_SIZED = function () {
   var length = Math.min(this.end - this.offset, this.body_bytes);
-  this.userCall()(this[kOnBody](this.chunk, this.offset, length));
+  // 0, length are for backwards compatibility. See: https://github.com/creationix/http-parser-js/pull/98
+  this.userCall()(this[kOnBody](this.chunk.slice(this.offset, this.offset + length), 0, length));
   this.offset += length;
   this.body_bytes -= length;
   if (!this.body_bytes) {
