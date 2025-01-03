@@ -1,10 +1,10 @@
 /*jshint node:true */
 
-var assert = require('assert');
-
 exports.HTTPParser = HTTPParser;
 function HTTPParser(type) {
-  assert.ok(type === HTTPParser.REQUEST || type === HTTPParser.RESPONSE || type === undefined);
+  if (type !== undefined && type !== HTTPParser.REQUEST && type !== HTTPParser.RESPONSE) {
+    throw new Error('type must be REQUEST or RESPONSE');
+  }
   if (type === undefined) {
     // Node v12+
   } else {
@@ -13,7 +13,9 @@ function HTTPParser(type) {
   this.maxHeaderSize=HTTPParser.maxHeaderSize
 }
 HTTPParser.prototype.initialize = function (type, async_resource) {
-  assert.ok(type === HTTPParser.REQUEST || type === HTTPParser.RESPONSE);
+  if (type !== HTTPParser.REQUEST && type !== HTTPParser.RESPONSE) {
+    throw new Error('type must be REQUEST or RESPONSE');
+  }
   this.type = type;
   this.state = type + '_LINE';
   this.info = {
@@ -405,7 +407,9 @@ HTTPParser.prototype.BODY_CHUNKEMPTYLINE = function () {
   if (line === undefined) {
     return;
   }
-  assert.equal(line, '');
+  if (line !== '') {
+    throw new Error('Expected empty line');
+  }
   this.state = 'BODY_CHUNKHEAD';
 };
 
