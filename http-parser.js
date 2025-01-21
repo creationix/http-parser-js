@@ -246,7 +246,6 @@ HTTPParser.prototype.REQUEST_LINE = function () {
   this.info.url = match[2];
   this.info.versionMajor = +match[3];
   this.info.versionMinor = +match[4];
-  this.body_bytes = 0;
   this.state = 'HEADER';
 };
 
@@ -353,6 +352,7 @@ HTTPParser.prototype.HEADER = function () {
     }
 
     info.shouldKeepAlive = this.shouldKeepAlive();
+
     //problem which also exists in original node: we should know skipBody before calling onHeadersComplete
     var skipBody;
     if (compatMode0_12) {
