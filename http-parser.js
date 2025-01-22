@@ -296,11 +296,13 @@ HTTPParser.prototype.HEADER = function () {
   } else {
     var headers = info.headers;
     var hasContentLength = false;
+    var hasTransferEncoding = false;
     var currentContentLengthValue;
     var hasUpgradeHeader = false;
     for (var i = 0; i < headers.length; i += 2) {
       switch (headers[i].toLowerCase()) {
         case 'transfer-encoding':
+          hasTransferEncoding = true;
           this.isChunked = headers[i + 1].toLowerCase() === 'chunked';
           break;
         case 'content-length':
@@ -326,6 +328,12 @@ HTTPParser.prototype.HEADER = function () {
           hasUpgradeHeader = true;
           break;
       }
+    }
+
+    // Logic from https://github.com/nodejs/llhttp/blob/dc5dc9a018214ae767a86bb5b0c69983d272d21e/src/native/http.c#L142-L146
+    // If there is no content length, no transfer encoding, and there is data in the body, throw.
+    if (this.type === HTTPParser.REQUEST && !hasUpgradeHeader && !hasContentLength && !hasTransferEncoding && (this.end - this.offset) > 0) {
+      throw parseErrorCode('HPE_INVALID_METHOD');
     }
 
     // if both isChunked and hasContentLength, isChunked wins
