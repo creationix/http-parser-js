@@ -92,6 +92,12 @@ declare class HTTPParserJS {
   [HTTPParser.kOnBody]: OnBodyParser
   [HTTPParser.kOnMessageComplete]: noop
 
+  /**
+   * Max number of bytes that will be parsed as headers, 80kb by default
+   * @default 81920
+   */
+  maxHeaderSize: number
+
   reinitialize: HTTPParserConstructor
   close: noop
   pause: noop
